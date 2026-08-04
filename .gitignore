@@ -20,6 +20,7 @@
 # production
 /build
 /*.zip
+/data/*.sqlite*
 
 # misc
 .DS_Store

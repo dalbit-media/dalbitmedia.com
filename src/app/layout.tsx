@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gowun_Batang, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
+import { ScrollToTop } from "./scroll-to-top";
 
 const notoSans = Noto_Sans_KR({
   variable: "--font-sans",
@@ -26,7 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${notoSans.variable} ${gowunBatang.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ScrollToTop />
+      </body>
     </html>
   );
 }

@@ -31,8 +31,48 @@ import {
   Type,
   Video,
 } from "lucide-react";
-
-const KAKAO_CHANNEL_URL = "https://pf.kakao.com/_dalbitmedia/chat";
+import { FaLinkedin } from "react-icons/fa6";
+import {
+  SiApplenews,
+  SiApplepodcasts,
+  SiAppstore,
+  SiArtstation,
+  SiBandcamp,
+  SiBehance,
+  SiBluesky,
+  SiDailymotion,
+  SiDiscord,
+  SiDribbble,
+  SiFacebook,
+  SiFeedly,
+  SiFlickr,
+  SiFlipboard,
+  SiGithub,
+  SiGooglenews,
+  SiGoogleplay,
+  SiInstagram,
+  SiKakao,
+  SiKakaotalk,
+  SiLine,
+  SiMastodon,
+  SiMedium,
+  SiNaver,
+  SiPinterest,
+  SiProducthunt,
+  SiReddit,
+  SiSoundcloud,
+  SiSpotify,
+  SiSubstack,
+  SiTelegram,
+  SiThreads,
+  SiTiktok,
+  SiTumblr,
+  SiTwitch,
+  SiVimeo,
+  SiX,
+  SiYoutube,
+} from "react-icons/si";
+import { KAKAO_CHANNEL_URL, SiteHeader } from "./site-header";
 
 const services = [
   { number: "01", title: "사이트 제작 및 관리", description: "브랜드의 가치가 선명하게 전달되는 사이트와 랜딩페이지를 만들고, 업데이트와 장애 대응까지 관리합니다.", icon: MonitorCog },
@@ -78,33 +118,76 @@ const supportedMedia = [
   ["웹툰", PanelsTopLeft],
 ] as const;
 
+const channelGroups = [
+  { title: "한국 채널", channels: [
+    ["카카오채널", KAKAO_CHANNEL_URL, SiKakaotalk],
+    ["네이버 블로그", "https://blog.naver.com/dalbitmedia", SiNaver],
+    ["브런치스토리", "https://brunch.co.kr/@dalbitmedia", SiKakao],
+    ["네이버TV", "https://tv.naver.com/dalbitmedia", SiNaver],
+    ["LINE", "https://line.me/", SiLine],
+  ] },
+  { title: "소셜", channels: [
+    ["Instagram", "https://www.instagram.com/dalbitmedia", SiInstagram],
+    ["TikTok", "https://www.tiktok.com/@dalbitmedia", SiTiktok],
+    ["Threads", "https://www.threads.net/@dalbitmedia", SiThreads],
+    ["X", "https://x.com/dalbitmedia", SiX],
+    ["Facebook", "https://www.facebook.com/dalbitmedia", SiFacebook],
+    ["LinkedIn", "https://www.linkedin.com/company/dalbitmedia", FaLinkedin],
+    ["Pinterest", "https://www.pinterest.com/dalbitmedia", SiPinterest],
+    ["Bluesky", "https://bsky.app/profile/dalbitmedia.com", SiBluesky],
+    ["Mastodon", "https://mastodon.social/@dalbitmedia", SiMastodon],
+    ["Telegram", "https://t.me/dalbitmedia", SiTelegram],
+    ["Discord", "https://discord.com/", SiDiscord],
+    ["Reddit", "https://www.reddit.com/user/dalbitmedia/", SiReddit],
+    ["Tumblr", "https://dalbitmedia.tumblr.com/", SiTumblr],
+  ] },
+  { title: "출판 · 뉴스", channels: [
+    ["Medium", "https://medium.com/@dalbitmedia", SiMedium],
+    ["Substack", "https://dalbitmedia.substack.com/", SiSubstack],
+    ["Flipboard", "https://flipboard.com/", SiFlipboard],
+    ["Feedly", "https://feedly.com/", SiFeedly],
+    ["Google News", "https://news.google.com/", SiGooglenews],
+    ["Apple News", "https://www.apple.com/apple-news/", SiApplenews],
+  ] },
+  { title: "아트 · 디자인", channels: [
+    ["Artsy", "https://www.artsy.net/search?q=Dalbit%20Media", Palette],
+    ["Behance", "https://www.behance.net/dalbitmedia", SiBehance],
+    ["Dribbble", "https://dribbble.com/dalbitmedia", SiDribbble],
+    ["ArtStation", "https://www.artstation.com/dalbitmedia", SiArtstation],
+    ["Flickr", "https://www.flickr.com/people/dalbitmedia/", SiFlickr],
+  ] },
+  { title: "영상 · 오디오", channels: [
+    ["YouTube", "https://www.youtube.com/@dalbitmedia", SiYoutube],
+    ["Vimeo", "https://vimeo.com/dalbitmedia", SiVimeo],
+    ["Dailymotion", "https://www.dailymotion.com/dalbitmedia", SiDailymotion],
+    ["Twitch", "https://www.twitch.tv/dalbitmedia", SiTwitch],
+    ["Spotify", "https://open.spotify.com/search/Dalbit%20Media", SiSpotify],
+    ["SoundCloud", "https://soundcloud.com/dalbitmedia", SiSoundcloud],
+    ["Apple Podcasts", "https://podcasts.apple.com/search?term=Dalbit%20Media", SiApplepodcasts],
+    ["Bandcamp", "https://bandcamp.com/search?q=Dalbit%20Media", SiBandcamp],
+  ] },
+  { title: "앱 · 제품", channels: [
+    ["Google Play", "https://play.google.com/store/search?q=Dalbit%20Media&c=apps", SiGoogleplay],
+    ["App Store", "https://apps.apple.com/kr/search?term=Dalbit%20Media", SiAppstore],
+    ["Product Hunt", "https://www.producthunt.com/@dalbitmedia", SiProducthunt],
+    ["GitHub", "https://github.com/dalbitmedia", SiGithub],
+  ] },
+] as const;
+
 export default function Home() {
   return (
     <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="달빛미디어 홈">
-          <span className="brand-mark" aria-hidden="true">D</span>
-          <span>달빛미디어</span>
-        </a>
-        <nav aria-label="주요 메뉴">
-          <a href="#about">회사 소개</a>
-          <a href="#services">서비스</a>
-          <a href="#process">진행 방식</a>
-          <a href="#pricing">이용 요금</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <a className="header-contact" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">
-          <MessageCircle size={17} strokeWidth={2} /> 문의하기
-        </a>
-      </header>
+      <SiteHeader />
 
       <section className="hero" id="top">
-        <Image className="hero-image" src="/dalbit-team.jpg" alt="콘텐츠 운영 계획을 논의하는 팀" fill priority sizes="100vw" />
-        <div className="hero-shade" />
+        <div className="hero-media">
+          <Image className="hero-image" src="/office-night-team.jpg" alt="늦은 밤 도심 사무실에서 함께 일하는 팀" fill priority sizes="100vw" />
+          <div className="hero-shade" />
+        </div>
         <div className="hero-content">
           <p className="eyebrow light"><Sparkles size={15} /> CREATIVE OPERATIONS PARTNER</p>
           <h1>달빛미디어</h1>
-          <p className="hero-copy">당신은 더 좋은 것을 만드세요.<br />그다음의 모든 일은 우리가 맡겠습니다.</p>
+          <p className="hero-copy">당신은 더 좋은 것을 만드세요.<br className="desktop-break" />그다음의 모든 일은 우리가 맡겠습니다.</p>
           <div className="hero-actions">
             <a className="button button-coral" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">카카오채널로 상담하기 <ArrowUpRight size={19} /></a>
             <a className="text-link light-link" href="#about">자세히 알아보기 <ArrowDown size={17} /></a>
@@ -120,7 +203,7 @@ export default function Home() {
       <section className="about section" id="about">
         <div className="section-label"><span>01</span> ABOUT US</div>
         <div className="about-grid">
-          <h2>창작의 마지막 단계부터<br />고객의 첫 반응까지.</h2>
+          <h2>창작의 마지막 단계부터<br className="desktop-break" />고객의 첫 반응까지.</h2>
           <div className="about-copy">
             <p className="lead">좋은 서비스와 콘텐츠가 운영 업무에 가려지지 않도록, 달빛미디어가 창작 바깥의 모든 일을 연결합니다.</p>
             <p>브랜드 사이트 제작부터 최종 테스트, 배포, 마케팅, 리뷰 관리, 고객 지원까지 하나의 팀처럼 수행합니다. 여러 업체와 따로 소통할 필요 없이, 창작자는 제품의 본질과 다음 아이디어에 집중할 수 있습니다.</p>
@@ -132,7 +215,7 @@ export default function Home() {
       <section className="services section" id="services">
         <div className="section-label"><span>02</span> WHAT WE DO</div>
         <div className="section-heading">
-          <h2>만드는 일 외의<br />모든 것을 맡습니다.</h2>
+          <h2>만드는 일 외의<br className="desktop-break" />모든 것을 맡습니다.</h2>
           <p>브랜드의 첫인상을 만드는 일부터 출시와 고객관리까지 모든 접점을 세심하게 운영합니다.</p>
         </div>
         <div className="service-list">
@@ -149,7 +232,7 @@ export default function Home() {
       <section className="media-types section" id="media-types">
         <div className="section-label"><span>03</span> SUPPORTED MEDIA</div>
         <div className="media-heading">
-          <h2>형식의 경계 없이,<br />좋은 콘텐츠라면.</h2>
+          <h2>형식의 경계 없이,<br className="desktop-break" />좋은 콘텐츠라면.</h2>
           <p>디지털 서비스부터 한 편의 작품까지, 다양한 미디어의 출시와 성장을 지원합니다.</p>
         </div>
         <div className="media-grid">
@@ -164,14 +247,14 @@ export default function Home() {
       </section>
 
       <section className="focus-band">
-        <div className="focus-image-wrap"><Image src="/dalbit-team.jpg" alt="콘텐츠 운영에 집중하는 제작 팀" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
-        <div className="focus-content"><Quote size={34} strokeWidth={1.4} /><blockquote>가장 잘하는 일에<br />더 오래 집중할 수 있도록.</blockquote><p>운영의 빈틈은 채우고, 창작의 가능성은 더 크게 만듭니다.</p></div>
+        <div className="focus-image-wrap"><Image src="/developer-working-late-rear.jpg" alt="늦은 밤 어두운 작업실에서 여러 모니터로 코드를 확인하는 개발자의 뒷모습" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
+        <div className="focus-content"><Quote size={34} strokeWidth={1.4} /><blockquote>가장 잘하는 일에<br className="desktop-break" />더 오래 집중할 수 있도록.</blockquote><p>운영의 빈틈은 채우고, 창작의 가능성은 더 크게 만듭니다.</p></div>
       </section>
 
       <section className="process section" id="process">
         <div className="section-label"><span>04</span> HOW WE WORK</div>
         <div className="process-grid">
-          <div className="process-intro"><h2>복잡한 운영을<br />단순한 흐름으로.</h2><p>현재 상황을 먼저 이해하고, 꼭 필요한 업무부터 시작합니다.</p></div>
+          <div className="process-intro"><h2>복잡한 운영을<br className="desktop-break" />단순한 흐름으로.</h2><p>현재 상황을 먼저 이해하고, 꼭 필요한 업무부터 시작합니다.</p></div>
           <ol className="process-list">
             {process.map(([number, title, description]) => <li key={number}><span>{number}</span><div><h3>{title}</h3><p>{description}</p></div></li>)}
           </ol>
@@ -181,7 +264,7 @@ export default function Home() {
       <section className="pricing section" id="pricing">
         <div className="section-label"><span>05</span> PRICING</div>
         <div className="pricing-head">
-          <div><p className="eyebrow"><Sparkles size={15} /> STARTER PLAN</p><h2>운영의 시작을<br />가볍고 든든하게.</h2></div>
+          <div><p className="eyebrow"><Sparkles size={15} /> STARTER PLAN</p><h2>운영의 시작을<br className="desktop-break" />가볍고 든든하게.</h2></div>
           <div className="price"><span>월</span><strong>49</strong><em>만원부터</em></div>
         </div>
         <div className="automation-note">
@@ -214,7 +297,7 @@ export default function Home() {
         <div className="section-label"><span>06</span> FREQUENTLY ASKED QUESTIONS</div>
         <div className="faq-grid">
           <div className="faq-intro">
-            <h2>궁금한 점을<br />먼저 답해드려요.</h2>
+            <h2>궁금한 점을<br className="desktop-break" />먼저 답해드려요.</h2>
             <p>그 밖의 궁금한 점은 카카오채널로 편하게 문의해 주세요.</p>
             <a className="text-link faq-link" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">직접 문의하기 <ArrowUpRight size={17} /></a>
           </div>
@@ -233,15 +316,35 @@ export default function Home() {
         <div className="contact-moon" aria-hidden="true" />
         <div className="contact-content">
           <p className="eyebrow light"><MessageCircle size={15} /> LET&apos;S TALK</p>
-          <h2>창작에 집중할 준비,<br />함께 시작해볼까요?</h2>
+          <h2>창작에 집중할 준비,<br className="desktop-break" />함께 시작해볼까요?</h2>
           <p>현재 운영 중인 서비스와 필요한 도움을 편하게 들려주세요.</p>
           <a className="button button-coral" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">카카오채널 문의하기 <ArrowUpRight size={19} /></a>
         </div>
       </section>
 
       <footer>
-        <div className="footer-brand"><span className="brand-mark">D</span><div><strong>달빛미디어</strong><span>창작자를 위한 운영 파트너</span></div></div>
-        <div className="footer-contact"><a href="mailto:hello@dalbitmedia.com"><Mail size={16} /> hello@dalbitmedia.com</a><a href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer"><MessageCircle size={16} /> 카카오채널</a></div>
+        <div className="footer-heading">
+          <div className="footer-brand"><div><strong>달빛미디어</strong><span>창작자를 위한 디지털 미디어 출판사</span></div></div>
+          <div className="footer-contact"><a href="mailto:hello@dalbitmedia.com"><Mail size={16} /> hello@dalbitmedia.com</a><a href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer"><MessageCircle size={16} /> 카카오채널</a></div>
+        </div>
+        <dl className="company-info" aria-label="회사 정보">
+          <div><dt>상호</dt><dd>달빛미디어</dd></div>
+          <div><dt>영문명</dt><dd>DALBIT MEDIA</dd></div>
+          <div><dt>사업 분야</dt><dd>디지털 미디어 출판 · 콘텐츠 유통 · 브랜드 운영</dd></div>
+          <div><dt>소재지</dt><dd>대한민국</dd></div>
+          <div><dt>대표 문의</dt><dd><a href="mailto:hello@dalbitmedia.com">hello@dalbitmedia.com</a></dd></div>
+        </dl>
+        <div className="footer-social">
+          <div><strong>공식 소셜 채널</strong><span>국내외 주요 플랫폼에서 달빛미디어의 소식과 콘텐츠를 만나보세요.</span></div>
+          <div className="footer-channel-groups">
+            {channelGroups.map((group) => <section className="footer-channel-group" key={group.title}>
+              <h3>{group.title}</h3>
+              <nav aria-label={`달빛미디어 ${group.title} 채널`}>
+                {group.channels.map(([label, href, Icon]) => <a key={label} href={href} target="_blank" rel="noreferrer"><Icon size={17} aria-hidden="true" /><span>{label}</span><ArrowUpRight className="channel-arrow" size={13} /></a>)}
+              </nav>
+            </section>)}
+          </div>
+        </div>
         <p>© 2026 DALBIT MEDIA. ALL RIGHTS RESERVED.</p>
       </footer>
     </main>
