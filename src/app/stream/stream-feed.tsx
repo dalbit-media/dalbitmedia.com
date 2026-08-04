@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Camera, Clock3, Flame, LoaderCircle, MessageCircle, Music2, Newspaper, Search, Tag, Users, Video, X } from "lucide-react";
 import type { Platform } from "@/lib/media-stream";
 import type { StoredStreamPage } from "@/lib/stream-store";
@@ -56,6 +56,70 @@ function hasKnownPublishedAt(metrics: StoredStreamPage["items"][number]["trendMe
   return !metrics.some((metric) => metric.label === "작성 시각 미제공");
 }
 
+const StreamCard = memo(function StreamCard({
+  item,
+  referenceTime,
+  onFailedImage,
+  onSelectTag,
+  failedImages,
+}: {
+  item: StoredStreamPage["items"][number];
+  referenceTime: number;
+  onFailedImage: (image: string) => void;
+  onSelectTag: (tag: string) => void;
+  failedImages: Set<string>;
+}) {
+  const Icon = platformIcons[item.platform];
+  const showImage = Boolean(item.image && !failedImages.has(item.image));
+  const titleClass = showImage && item.title.length > 60 ? "stream-card-title-compact" : undefined;
+  const visibleMetrics = item.trendMetrics.filter((metric) => metric.label !== "작성 시각 미제공" && metric.label !== "공개 인덱스");
+  const activityClass = item.sourceScore >= 90
+    ? " stream-card-activity stream-card-activity-strong"
+    : item.sourceScore >= 75 ? " stream-card-activity" : "";
+
+  return (
+    <article className={`stream-card${showImage ? " stream-card-featured" : ""}${activityClass}`} key={item.id}>
+      {showImage && item.image && (
+        <a className="stream-card-image" href={item.url} target="_blank" rel="noreferrer" tabIndex={-1}>
+          <Image
+            src={item.image}
+            alt=""
+            fill
+            sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+            onError={() => onFailedImage(item.image!)}
+            unoptimized
+          />
+        </a>
+      )}
+      <div className="stream-card-body">
+        <div className="stream-card-meta">
+          <span className={`platform-badge ${platformClasses[item.platform]}`}><Icon size={14} /> {item.source}</span>
+          <span><Clock3 size={13} /> {hasKnownPublishedAt(item.trendMetrics) ? relativeTime(item.publishedAt, referenceTime) : storedTime(item.collectedAt, referenceTime)}</span>
+        </div>
+        <h2 className={titleClass}><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h2>
+        {item.description && <p className="stream-card-excerpt">{item.description}</p>}
+        {item.tags.length > 0 && <div className="stream-card-tags" aria-label="고유명사 태그">
+          {item.tags.map((tag) => <button key={tag.normalized} type="button" onClick={() => void onSelectTag(tag.normalized)}>#{tag.displayName}</button>)}
+        </div>}
+        {visibleMetrics.length > 0 && <div className="trend-metrics" aria-label="인기 및 반응 지표">
+          {visibleMetrics.map((metric) => <span key={metric.label}><small>{metric.label}</small><strong>{formatMetric(metric.label, metric.value)}</strong></span>)}
+        </div>}
+        <div className="stream-card-footer">
+          <div className="hotness-gauge" aria-label={`${item.source} 내 상대 인기도 ${item.sourceScore}점`} title={`${item.source} 내 상대 인기도`}>
+            <span className="hotness-gauge-label">HOT <strong>{item.sourceScore}</strong></span>
+            <span className="hotness-gauge-bar" aria-hidden="true">
+              {Array.from({ length: 20 }, (_, index) => <i className={index < item.sourceScore / 5 ? "filled" : ""} key={index} />)}
+            </span>
+          </div>
+          <div className="stream-card-actions">
+            <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${item.title} 원문 보기`}><ArrowUpRight size={19} /></a>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+});
+
 async function requestStreamPage(filter: string, cursor?: string, search?: string, tag?: string) {
   const searchParams = new URLSearchParams();
   if (filter !== "전체") searchParams.set("filter", filter);
@@ -82,15 +146,20 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
   const gridRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const requestVersion = useRef(0);
-  const koreanSources = sources.filter((source) => source.platform === "국내 커뮤니티");
-  const platformCounts = sources
+  const loadingRef = useRef(loading);
+  const koreanSources = useMemo(() => sources.filter((source) => source.platform === "국내 커뮤니티"), [sources]);
+  const platformCounts = useMemo(() => sources
     .filter((source) => source.platform !== "국내 커뮤니티")
-    .reduce((counts, source) => counts.set(source.platform, (counts.get(source.platform) ?? 0) + source.count), new Map<Platform, number>());
-  const filterOptions = [
+    .reduce((counts, source) => counts.set(source.platform, (counts.get(source.platform) ?? 0) + source.count), new Map<Platform, number>()), [sources]);
+  const filterOptions = useMemo(() => [
     { key: "전체", count: sources.reduce((sum, source) => sum + source.count, 0) },
     ...koreanSources.map((source) => ({ key: source.source, count: source.count })),
     ...[...platformCounts].sort((left, right) => right[1] - left[1]).map(([platform, count]) => ({ key: platform, count })),
-  ];
+  ], [koreanSources, platformCounts, sources]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setReferenceTime(Date.now()), 30_000);
@@ -114,8 +183,38 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
     return () => observer.disconnect();
   }, [failedImages, items]);
 
+  const markFailedImage = useCallback((image: string) => {
+    setFailedImages((current) => {
+      if (current.has(image)) return current;
+      const next = new Set(current);
+      next.add(image);
+      return next;
+    });
+  }, []);
+
+  const loadPages = useCallback(async (nextCursor: string | null, nextSource = selectedSource, nextSearch = activeSearch, nextTag = activeTag) => {
+    if (!nextCursor || loadingRef.current) return;
+    const version = ++requestVersion.current;
+    setLoading(true);
+    setError("");
+    try {
+      const page = await requestStreamPage(nextSource, nextCursor, nextSearch, nextTag);
+      if (version !== requestVersion.current) return;
+      setItems((current) => {
+        const urls = new Set(current.map((item) => item.url));
+        return [...current, ...page.items.filter((item) => !urls.has(item.url))];
+      });
+      setCursor(page.nextCursor);
+      setSources(page.sources);
+    } catch (requestError) {
+      if (version === requestVersion.current) setError(requestError instanceof Error ? requestError.message : "스트림을 불러오지 못했습니다.");
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
+    }
+  }, [activeSearch, activeTag, selectedSource]);
+
   async function selectSource(source: string) {
-    if (source === selectedSource || loading) return;
+    if (source === selectedSource || loadingRef.current) return;
     const version = ++requestVersion.current;
     setSelectedSource(source);
     setLoading(true);
@@ -175,30 +274,14 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !cursor || loading) return;
-    const observer = new IntersectionObserver(async ([entry]) => {
-      if (!entry.isIntersecting) return;
-      observer.disconnect();
-      const version = requestVersion.current;
-      setLoading(true);
-      try {
-        const page = await requestStreamPage(selectedSource, cursor, activeSearch, activeTag);
-        if (version !== requestVersion.current) return;
-        setItems((current) => {
-          const urls = new Set(current.map((item) => item.url));
-          return [...current, ...page.items.filter((item) => !urls.has(item.url))];
-        });
-        setCursor(page.nextCursor);
-        setSources(page.sources);
-      } catch (requestError) {
-        if (version === requestVersion.current) setError(requestError instanceof Error ? requestError.message : "스트림을 불러오지 못했습니다.");
-      } finally {
-        if (version === requestVersion.current) setLoading(false);
-      }
-    }, { rootMargin: "500px 0px" });
+    if (!sentinel || !cursor) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || loadingRef.current) return;
+      void loadPages(cursor, selectedSource, activeSearch, activeTag);
+    }, { rootMargin: "600px 0px", threshold: 0.01 });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeSearch, activeTag, cursor, loading, selectedSource]);
+  }, [activeSearch, activeTag, cursor, loadPages, selectedSource]);
 
   return (
     <>
@@ -229,56 +312,16 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
         ))}
       </div>
       <div className="stream-grid" ref={gridRef} aria-live="polite">
-        {items.map((item) => {
-          const Icon = platformIcons[item.platform];
-          const showImage = Boolean(item.image && !failedImages.has(item.image));
-          const titleClass = showImage && item.title.length > 60 ? "stream-card-title-compact" : undefined;
-          const visibleMetrics = item.trendMetrics.filter((metric) => metric.label !== "작성 시각 미제공" && metric.label !== "공개 인덱스");
-          const activityClass = item.sourceScore >= 90
-            ? " stream-card-activity stream-card-activity-strong"
-            : item.sourceScore >= 75 ? " stream-card-activity" : "";
-          return (
-            <article className={`stream-card${showImage ? " stream-card-featured" : ""}${activityClass}`} key={item.id}>
-              {showImage && item.image && (
-                <a className="stream-card-image" href={item.url} target="_blank" rel="noreferrer" tabIndex={-1}>
-                  <Image
-                    src={item.image}
-                    alt=""
-                    fill
-                    sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
-                    onError={() => setFailedImages((current) => new Set(current).add(item.image!))}
-                    unoptimized
-                  />
-                </a>
-              )}
-              <div className="stream-card-body">
-                <div className="stream-card-meta">
-                  <span className={`platform-badge ${platformClasses[item.platform]}`}><Icon size={14} /> {item.source}</span>
-                  <span><Clock3 size={13} /> {hasKnownPublishedAt(item.trendMetrics) ? relativeTime(item.publishedAt, referenceTime) : storedTime(item.collectedAt, referenceTime)}</span>
-                </div>
-                <h2 className={titleClass}><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h2>
-                {item.description && <p className="stream-card-excerpt">{item.description}</p>}
-                {item.tags.length > 0 && <div className="stream-card-tags" aria-label="고유명사 태그">
-                  {item.tags.map((tag) => <button key={tag.normalized} type="button" onClick={() => void selectTag(tag.normalized)}>#{tag.displayName}</button>)}
-                </div>}
-                {visibleMetrics.length > 0 && <div className="trend-metrics" aria-label="인기 및 반응 지표">
-                  {visibleMetrics.map((metric) => <span key={metric.label}><small>{metric.label}</small><strong>{formatMetric(metric.label, metric.value)}</strong></span>)}
-                </div>}
-                <div className="stream-card-footer">
-                  <div className="hotness-gauge" aria-label={`${item.source} 내 상대 인기도 ${item.sourceScore}점`} title={`${item.source} 내 상대 인기도`}>
-                    <span className="hotness-gauge-label">HOT <strong>{item.sourceScore}</strong></span>
-                    <span className="hotness-gauge-bar" aria-hidden="true">
-                      {Array.from({ length: 20 }, (_, index) => <i className={index < item.sourceScore / 5 ? "filled" : ""} key={index} />)}
-                    </span>
-                  </div>
-                  <div className="stream-card-actions">
-                    <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${item.title} 원문 보기`}><ArrowUpRight size={19} /></a>
-                  </div>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        {items.map((item) => (
+          <StreamCard
+            item={item}
+            key={item.id}
+            onFailedImage={markFailedImage}
+            onSelectTag={selectTag}
+            referenceTime={referenceTime}
+            failedImages={failedImages}
+          />
+        ))}
       </div>
       <div className="stream-sentinel" ref={sentinelRef} aria-live="polite">
         {loading && <span><LoaderCircle size={17} /> 이전 트렌드를 불러오는 중</span>}
