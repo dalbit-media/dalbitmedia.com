@@ -1,18 +1,6 @@
 import type { Metadata } from "next";
-import { Gowun_Batang, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { ScrollToTop } from "./scroll-to-top";
-
-const notoSans = Noto_Sans_KR({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
-
-const gowunBatang = Gowun_Batang({
-  variable: "--font-serif",
-  weight: ["400", "700"],
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "달빛미디어 | 창작자를 위한 운영 파트너",
@@ -26,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${notoSans.variable} ${gowunBatang.variable}`}>
+    <html lang="ko">
       <body>
         {children}
         <ScrollToTop />

@@ -8,11 +8,13 @@
   --yellow: #f3c64f;
   --line: rgba(16, 26, 44, 0.16);
   --muted: #626977;
+  --font-sans: "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+  --font-serif: "Gowun Batang", "Times New Roman", "Nanum Myeongjo", serif;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-sans), sans-serif; letter-spacing: 0; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-sans); letter-spacing: 0; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, blockquote { text-wrap: balance; }
 p { text-wrap: pretty; }
