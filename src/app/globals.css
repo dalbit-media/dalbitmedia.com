@@ -27,19 +27,25 @@ p { text-wrap: pretty; }
 .brand-mark { display: block; width: 31px; height: 31px; flex: 0 0 auto; overflow: visible; }
 .brand-mark-background { fill: var(--ink); stroke: var(--coral); stroke-width: 1.5px; }
 .brand-mark-moon { fill: var(--yellow); }
-.site-header nav { display: flex; gap: clamp(24px, 3vw, 46px); font-size: 14px; }
-.site-header nav a { transition: opacity .2s ease; }
-.site-header nav a:hover { opacity: .65; }
+.desktop-nav { display: flex; gap: clamp(24px, 3vw, 46px); font-size: 14px; }
+.desktop-nav a { transition: opacity .2s ease; }
+.desktop-nav a:hover { opacity: .65; }
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 12px; }
 .header-contact { justify-self: end; display: flex; min-height: 42px; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid rgba(255,102,72,.7); border-radius: 4px; background: var(--coral); color: white; box-shadow: 0 7px 22px rgba(255,102,72,.16); font-size: 14px; font-weight: 800; transition: color .22s ease, background .22s ease, border-color .22s ease, box-shadow .22s ease, transform .22s ease; }
 .header-contact svg { transition: transform .22s ease; }
 .header-contact:hover { border-color: var(--yellow); background: var(--yellow); color: var(--ink); box-shadow: 0 9px 28px rgba(243,198,79,.24); transform: translateY(-2px); }
 .header-contact:hover svg { transform: rotate(-8deg) scale(1.08); }
 .header-contact:focus-visible, .button-coral:focus-visible, .faq-link:focus-visible { outline: 3px solid var(--yellow); outline-offset: 4px; }
+.mobile-menu-button { display: none; place-items: center; width: 42px; height: 42px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; background: transparent; color: white; cursor: pointer; }
+.mobile-menu-panel { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; padding: 0 22px 16px; border-bottom: 1px solid rgba(255,255,255,.16); background: #0b1220; }
+.mobile-menu-panel nav { display: grid; gap: 4px; }
+.mobile-menu-panel nav a { display: block; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.92); font-size: 14px; font-weight: 700; }
+.mobile-menu-panel nav a:last-child { border-bottom: 0; }
 .site-header-solid { position: relative; background: var(--ink); }
 .site-header-compact { height: 62px; padding-right: clamp(18px, 4vw, 54px); padding-left: clamp(18px, 4vw, 54px); }
 .site-header-compact .brand { font-size: 16px; }
 .site-header-compact .brand-mark { width: 27px; height: 27px; }
-.site-header-compact nav { gap: clamp(18px, 2.3vw, 34px); font-size: 12px; }
+.site-header-compact .desktop-nav { gap: clamp(18px, 2.3vw, 34px); font-size: 12px; }
 .site-header-compact .header-contact { font-size: 12px; }
 
 .hero { position: relative; height: calc(100svh - 70px); overflow: hidden; background: #000; color: white; }
@@ -328,7 +334,9 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
 @media (max-width: 900px) {
   .site-header { grid-template-columns: 1fr auto; height: 72px; }
   .site-header.site-header-compact { height: 56px; }
-  .site-header nav { display: none; }
+  .desktop-nav { display: none; }
+  .mobile-menu-button { display: grid; }
+  .header-contact { min-height: 40px; }
   .hero { height: calc(100svh - 70px); }
   .hero-media { top: 86px; }
   .hero-index { display: none; }
@@ -365,6 +373,7 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
 @media (max-width: 600px) {
   .header-contact { min-width: 42px; min-height: 42px; justify-content: center; padding: 0; font-size: 0; }
   .header-contact svg { width: 22px; height: 22px; }
+  .mobile-menu-panel { padding-right: 18px; padding-left: 18px; }
   .hero-media { inset: 84px 0 0; }
   .hero-content { justify-content: flex-end; padding-top: 100px; padding-bottom: clamp(28px, 7vh, 58px); }
   .hero-shade { background: linear-gradient(180deg, #000 0%, rgba(0,0,0,.62) 7%, transparent 22%, transparent 52%, rgba(5,14,29,.78) 78%, #000 100%), linear-gradient(90deg, rgba(5,14,29,.56), rgba(5,14,29,.12)); }
