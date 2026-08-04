@@ -371,8 +371,14 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
 }
 
 @media (max-width: 600px) {
-  .header-contact { min-width: 42px; min-height: 42px; justify-content: center; padding: 0; font-size: 0; }
-  .header-contact svg { width: 22px; height: 22px; }
+  .header-contact {
+    min-width: auto;
+    min-height: 40px;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 12px;
+  }
+  .header-contact svg { width: 16px; height: 16px; }
   .mobile-menu-panel { padding-right: 18px; padding-left: 18px; }
   .hero-media { inset: 84px 0 0; }
   .hero-content { justify-content: flex-end; padding-top: 100px; padding-bottom: clamp(28px, 7vh, 58px); }
