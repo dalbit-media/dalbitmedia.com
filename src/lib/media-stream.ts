@@ -35,8 +35,9 @@ type FeedSource = {
   name: string;
   platform: Platform;
   url: string;
-  type: "atom" | "google-trends" | "google-news-site" | "naver-news" | "nate-news";
+  type: "atom" | "google-trends" | "google-news-site" | "naver-news" | "nate-news" | "rss-news-kr";
   encoding?: "euc-kr";
+  titleSuffix?: string;
 };
 
 type CommunitySource = {
@@ -53,6 +54,10 @@ const youtubeChannels = [
   ["SMTOWN", "UCEf_Bc-KVd7onSeifS3py9g"],
   ["JYP Entertainment", "UCaO6TYtlC8U5ttz62hTrZgg"],
   ["MBCkpop", "UCe52oeb7Xv_KaJsEzcKXJJg"],
+  ["1theK (원더케이)", "UCJ6195JimYWCVT36f0bSbHA"],
+  ["Stone Music Entertainment", "UC3ftDBKJHID9_mXKw62mHbQ"],
+  ["Mnet K-POP", "UCy7sEFbPX31Y-uXkxgUJe0Q"],
+  ["STARSHIP ENTERTAINMENT", "UCl0PNRqMOsMhI4UXOIG9RMQ"],
 ] as const;
 
 const communitySources: CommunitySource[] = [
@@ -67,6 +72,11 @@ const communitySources: CommunitySource[] = [
   { name: "뽐뿌 HOT", url: "https://www.ppomppu.co.kr/hot.php?id=freeboard", linkSelector: "a.baseList-title", linkPattern: /\/zboard\/zboard\.php\?id=[^&]+&no=\d+/, ranked: true, encoding: "euc-kr" },
   { name: "MLBPark 베스트", url: "https://mlbpark.donga.com/mp/b.php?b=bullpen&m=best", linkSelector: 'a.txt[href*="b=bullpen"][href*="m=view"]', linkPattern: /[?&]id=\d+/, ranked: true },
   { name: "보배드림 베스트", url: "https://www.bobaedream.co.kr/list?code=best", linkSelector: 'a.bsubject[href^="/view?code=best"]', linkPattern: /[?&]No=\d+/, ranked: true },
+  { name: "아카라이브 싱글벙글", url: "https://arca.live/b/singlebungle?sort=popular", linkSelector: 'a.title.hybrid-title[href*="/b/singlebungle/"]', linkPattern: /\/b\/singlebungle\/\d+/, ranked: true },
+  { name: "아카라이브 이슈", url: "https://arca.live/b/issuezoom?sort=popular", linkSelector: 'a.title.hybrid-title[href*="/b/issuezoom/"]', linkPattern: /\/b\/issuezoom\/\d+/, ranked: true },
+  { name: "개드립", url: "https://www.dogdrip.net/dogdrip", linkSelector: 'a.link_title[href*="dogdrip.net/"]', linkPattern: /dogdrip\.net\/\d+$/, ranked: true },
+  { name: "PGR21 자유게시판", url: "https://pgr21.com/free", linkSelector: 'a.title.hybrid-title[href*="/free/"]', linkPattern: /\/free\/\d+/, ranked: true },
+  { name: "위키트리", url: "https://www.wikitree.co.kr/main/news_list.php?g_national=national&tab=ranking", linkSelector: 'a.title[href*="/article/"]', linkPattern: /\/article\/\d+/, ranked: true },
 ];
 
 const sources: FeedSource[] = [
@@ -77,9 +87,16 @@ const sources: FeedSource[] = [
     url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
   })),
   { name: "Google Trends KR", platform: "검색 트렌드", type: "google-trends", url: "https://trends.google.com/trending/rss?geo=KR" },
-  { name: "에펨코리아", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:fmkorea.com")}&hl=ko&gl=KR&ceid=KR:ko` },
+  { name: "에펨코리아", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:fmkorea.com")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "에펨코리아" },
+  { name: "오늘의유머", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:todayhumor.co.kr")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "오늘의유머" },
+  { name: "개드립", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:dogdrip.net")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "개드립" },
+  { name: "PGR21", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:pgr21.com")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "PGR21" },
+  { name: "아카라이브", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:arca.live")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "아카라이브" },
+  { name: "나무위키", platform: "국내 커뮤니티", type: "google-news-site", url: `https://news.google.com/rss/search?q=${encodeURIComponent("site:namu.wiki")}&hl=ko&gl=KR&ceid=KR:ko`, titleSuffix: "나무위키" },
   { name: "네이버 많이 본 뉴스", platform: "국내 뉴스", type: "naver-news", url: "https://news.naver.com/main/ranking/popularDay.naver", encoding: "euc-kr" },
   { name: "네이트 관심뉴스", platform: "국내 뉴스", type: "nate-news", url: "https://news.nate.com/rank/interest", encoding: "euc-kr" },
+  { name: "연합뉴스", platform: "국내 뉴스", type: "rss-news-kr", url: "https://www.yna.co.kr/rss/news.xml" },
+  { name: "SBS 뉴스", platform: "국내 뉴스", type: "rss-news-kr", url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=00", titleSuffix: "SBS 뉴스" },
 ];
 
 const parser = new XMLParser({
@@ -314,7 +331,10 @@ async function fetchSource(source: FeedSource): Promise<StreamItem[]> {
   if (source.type === "google-news-site") {
     const parsed = parser.parse(await response.text());
     return asArray<Record<string, unknown>>(parsed.rss?.channel?.item).slice(0, 8).map((item) => {
-      const title = text(item.title).replace(/\s+-\s+에펨코리아$/, "").trim();
+      const titleRaw = text(item.title);
+      const title = source.titleSuffix
+        ? titleRaw.replace(new RegExp(`\\s+-\\s+${source.titleSuffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), "").trim()
+        : titleRaw;
       const publishedAt = text(item.pubDate);
       const trendMetrics = [{ label: "공개 인덱스", value: 0 }];
       return {
@@ -324,6 +344,34 @@ async function fetchSource(source: FeedSource): Promise<StreamItem[]> {
         url: text(item.link),
         source: source.name,
         publishedAt,
+        trendScore: 0,
+        trendMetrics,
+      };
+    });
+  }
+
+  if (source.type === "rss-news-kr") {
+    const parsed = parser.parse(await response.text());
+    return asArray<Record<string, unknown>>(parsed.rss?.channel?.item).slice(0, 10).map((item) => {
+      const titleRaw = text(item.title);
+      const title = source.titleSuffix
+        ? titleRaw.replace(new RegExp(`\\s+-\\s+${source.titleSuffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), "").trim()
+        : titleRaw;
+      const publishedAt = text(item.pubDate);
+      const thumbnail = (item.thumbnail as { url?: string } | undefined)?.url;
+      const mediaContents = asArray<{ url?: string; medium?: string; type?: string }>(item.content as Record<string, unknown> | Record<string, unknown>[] | undefined);
+      const imageContent = mediaContents.find(c => c.type?.startsWith("image") || c.medium === "image");
+      const enclosure = item.enclosure as { url?: string; type?: string } | undefined;
+      const image = thumbnail ?? imageContent?.url ?? (enclosure?.type?.startsWith("image") ? enclosure.url : undefined);
+      const trendMetrics = [{ label: "공개 인덱스", value: 0 }];
+      return {
+        id: `RSS-${source.name}-${text(item.guid) || text(item.link)}`,
+        platform: source.platform,
+        title,
+        url: text(item.link),
+        source: source.name,
+        publishedAt,
+        image,
         trendScore: 0,
         trendMetrics,
       };
@@ -375,7 +423,7 @@ async function fetchCommunitySource(source: CommunitySource): Promise<StreamItem
     const title = $(element).text().replace(/\s+/g, " ").replace(/^\d+\s+/, "").replace(/\s*\[?\d+\]?$/, "").trim();
     if (!source.linkPattern.test(href) || title.length < 5 || /^(공지|추천\s*\d+|\[마감\])/.test(title)) return;
 
-    const row = $(element).closest("tr, li, div.list_item");
+    const row = $(element).closest("tr, li, div.list_item, div.list-row, article, div.article-list");
     if (source.name === "더쿠" && row.hasClass("notice")) return;
     let trendMetrics: TrendMetric[] = [];
     if (source.name === "DCInside") {
@@ -423,8 +471,12 @@ async function fetchCommunitySource(source: CommunitySource): Promise<StreamItem
         { label: "조회", value: metricValue(row.find(".hit").text()) },
         { label: "추천", value: metricValue(row.find(".recomd").text()) },
         { label: "댓글", value: metricValue(row.find(".num_reply").text()) },
-      ];
-    }
+      ];    } else if (source.name.startsWith("아카라이브")) {
+      trendMetrics = [
+        { label: "조회", value: metricValue(row.find(".col-view").text()) },
+        { label: "추쳍", value: metricValue(row.find(".col-rate, .col-vote").first().text()) },
+        { label: "댓글", value: metricValue(row.find(".col-comment").text()) },
+      ];    }
     trendMetrics = trendMetrics.filter((metric) => metric.value > 0);
     if (source.ranked && trendMetrics.length === 0) trendMetrics = [{ label: "인기 순위", value: items.length + 1 }];
 
