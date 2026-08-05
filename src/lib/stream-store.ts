@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { calculateTrendScore, canonicalStreamUrl, collectMediaStream, isIndexedItem, isRankedItem, normalizedStreamTitle, STREAM_REVALIDATE_SECONDS, type Platform, type StreamItem, type TrendMetric } from "./media-stream";
+import { calculateTrendScore, canonicalStreamUrl, collectMediaStream, isIndexedItem, isRankedItem, normalizedStreamTitle, youtubeChannelNames, TOTAL_SOURCE_COUNT, STREAM_REVALIDATE_SECONDS, type Platform, type StreamItem, type TrendMetric } from "./media-stream";
 import { extractProperNouns, koreanProperNounSeeds, normalizeProperNoun, type ProperNounMatch } from "./korean-proper-nouns";
 
 export type StoredProperNoun = {
@@ -36,6 +36,7 @@ export type ProperNounTrend = StoredProperNoun & {
   count: number;
   sourceCount: number;
   latestAt: string;
+  rankChange?: number | "new";
 };
 
 export type ProperNounTrendData = {
@@ -46,6 +47,8 @@ export type ProperNounTrendData = {
     day: ProperNounTrend[];
     week: ProperNounTrend[];
     month: ProperNounTrend[];
+    quarter: ProperNounTrend[];
+    half: ProperNounTrend[];
   };
   history: Array<{
     month: string;
@@ -465,8 +468,13 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
     sources: getSourceSummaries(),
     updatedAt: latest?.collected_at ?? null,
     activeSources: latest?.active_sources ?? 0,
-    totalSources: latest?.total_sources ?? 0,
-    inactiveSources: latest ? JSON.parse(latest.inactive_sources) as string[] : [],
+    totalSources: TOTAL_SOURCE_COUNT,
+    inactiveSources: (() => {
+      const raw = latest ? JSON.parse(latest.inactive_sources) as string[] : [];
+      // Normalize legacy per-channel YouTube entries into a single "YouTube" entry
+      const hasYoutubeInactive = raw.some((n) => youtubeChannelNames.has(n));
+      return [...raw.filter((n) => !youtubeChannelNames.has(n)), ...(hasYoutubeInactive ? ["YouTube"] : [])];
+    })(),
   };
 }
 
@@ -488,6 +496,14 @@ function getProperNounTrendsSince(db: DatabaseSync, since: string, limit: number
     count: Number(row.count),
     sourceCount: Number(row.source_count),
     latestAt: row.latest_at,
+  }));
+}
+
+function applyRankChanges(current: ProperNounTrend[], previous: ProperNounTrend[]): ProperNounTrend[] {
+  const prevRank = new Map(previous.map((t, i) => [t.normalized, i + 1]));
+  return current.map((t, i) => ({
+    ...t,
+    rankChange: prevRank.has(t.normalized) ? prevRank.get(t.normalized)! - (i + 1) : "new",
   }));
 }
 
@@ -521,14 +537,24 @@ export function getProperNounTrendData(now = new Date()): ProperNounTrendData {
     historyMap.set(row.month, keywords);
   }
 
+  const raw = {
+    realtime: getProperNounTrendsSince(db, realtimeSince, 20),
+    day: getProperNounTrendsSince(db, since(24 * 60 * 60_000), 20, 2),
+    week: getProperNounTrendsSince(db, since(7 * 24 * 60 * 60_000), 20, 2),
+    month: getProperNounTrendsSince(db, since(30 * 24 * 60 * 60_000), 20, 2),
+    quarter: getProperNounTrendsSince(db, since(90 * 24 * 60 * 60_000), 20, 2),
+    half: getProperNounTrendsSince(db, since(180 * 24 * 60 * 60_000), 20, 2),
+  };
   return {
     trackedSince: tracking.value,
     updatedAt: latest?.collected_at ?? null,
     windows: {
-      realtime: getProperNounTrendsSince(db, realtimeSince, 20),
-      day: getProperNounTrendsSince(db, since(24 * 60 * 60_000), 20, 2),
-      week: getProperNounTrendsSince(db, since(7 * 24 * 60 * 60_000), 20, 2),
-      month: getProperNounTrendsSince(db, since(30 * 24 * 60 * 60_000), 20, 2),
+      realtime: applyRankChanges(raw.realtime, raw.day),
+      day: applyRankChanges(raw.day, raw.week),
+      week: applyRankChanges(raw.week, raw.month),
+      month: applyRankChanges(raw.month, raw.quarter),
+      quarter: applyRankChanges(raw.quarter, raw.half),
+      half: raw.half,
     },
     history: [...historyMap].map(([month, keywords]) => ({ month, keywords })),
   };

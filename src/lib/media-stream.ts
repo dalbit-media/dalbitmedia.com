@@ -54,16 +54,15 @@ const youtubeChannels = [
   ["SMTOWN", "UCEf_Bc-KVd7onSeifS3py9g"],
   ["JYP Entertainment", "UCaO6TYtlC8U5ttz62hTrZgg"],
   ["MBCkpop", "UCe52oeb7Xv_KaJsEzcKXJJg"],
-  ["1theK (원더케이)", "UCJ6195JimYWCVT36f0bSbHA"],
-  ["Stone Music Entertainment", "UC3ftDBKJHID9_mXKw62mHbQ"],
-  ["Mnet K-POP", "UCy7sEFbPX31Y-uXkxgUJe0Q"],
-  ["STARSHIP ENTERTAINMENT", "UCl0PNRqMOsMhI4UXOIG9RMQ"],
+  ["1theK (원더케이)", "UCjO4StI9jjPI9xSIIixsYdw"],
+  ["Stone Music Entertainment", "UCHoJfm0k-THp6bs0dZgERUA"],
+  ["Mnet K-POP", "UCqJ3rYYs-n5blu6JxpciQjA"],
+  ["STARSHIP ENTERTAINMENT", "UCQef4jeKlQXDvf8aaSaadIA"],
 ] as const;
-
+export const youtubeChannelNames: ReadonlySet<string> = new Set(youtubeChannels.map(([name]) => name));
 const communitySources: CommunitySource[] = [
   { name: "DCInside", url: "https://gall.dcinside.com/board/lists/?id=dcbest", linkSelector: 'tr.ub-content.us-post a[href*="/board/view/"]', linkPattern: /\/board\/view\// },
   { name: "더쿠", url: "https://theqoo.net/hot/category/2987494600", linkSelector: 'td.title a[href^="/hot/"]', linkPattern: /\/hot\/\d+/ },
-  { name: "인스티즈", url: "https://www.instiz.net/pt", linkSelector: 'td.listsubject a[href*="/pt/"]', linkPattern: /\/pt\/\d+/ },
   { name: "네이트 판 랭킹", url: "https://pann.nate.com/talk/ranking", linkSelector: 'li h2 a[href^="/talk/"]', linkPattern: /\/talk\/\d+$/, ranked: true },
   { name: "82cook 자유게시판", url: "https://www.82cook.com/entiz/enti.php?bn=15", linkSelector: 'tr:not(.noticeList) td.title > a[href*="read.php?bn=15"]', linkPattern: /read\.php\?bn=15&num=\d+/ },
   { name: "디미토리 이슈", url: "https://www.dmitory.com/issue", linkSelector: 'tr:not(.notice) a.hx[href^="https://www.dmitory.com/issue/"]', linkPattern: /\/issue\/\d+$/ },
@@ -73,10 +72,6 @@ const communitySources: CommunitySource[] = [
   { name: "MLBPark 베스트", url: "https://mlbpark.donga.com/mp/b.php?b=bullpen&m=best", linkSelector: 'a.txt[href*="b=bullpen"][href*="m=view"]', linkPattern: /[?&]id=\d+/, ranked: true },
   { name: "보배드림 베스트", url: "https://www.bobaedream.co.kr/list?code=best", linkSelector: 'a.bsubject[href^="/view?code=best"]', linkPattern: /[?&]No=\d+/, ranked: true },
   { name: "아카라이브 싱글벙글", url: "https://arca.live/b/singlebungle?sort=popular", linkSelector: 'a.title.hybrid-title[href*="/b/singlebungle/"]', linkPattern: /\/b\/singlebungle\/\d+/, ranked: true },
-  { name: "아카라이브 이슈", url: "https://arca.live/b/issuezoom?sort=popular", linkSelector: 'a.title.hybrid-title[href*="/b/issuezoom/"]', linkPattern: /\/b\/issuezoom\/\d+/, ranked: true },
-  { name: "개드립", url: "https://www.dogdrip.net/dogdrip", linkSelector: 'a.link_title[href*="dogdrip.net/"]', linkPattern: /dogdrip\.net\/\d+$/, ranked: true },
-  { name: "PGR21 자유게시판", url: "https://pgr21.com/free", linkSelector: 'a.title.hybrid-title[href*="/free/"]', linkPattern: /\/free\/\d+/, ranked: true },
-  { name: "위키트리", url: "https://www.wikitree.co.kr/main/news_list.php?g_national=national&tab=ranking", linkSelector: 'a.title[href*="/article/"]', linkPattern: /\/article\/\d+/, ranked: true },
 ];
 
 const sources: FeedSource[] = [
@@ -96,8 +91,11 @@ const sources: FeedSource[] = [
   { name: "네이버 많이 본 뉴스", platform: "국내 뉴스", type: "naver-news", url: "https://news.naver.com/main/ranking/popularDay.naver", encoding: "euc-kr" },
   { name: "네이트 관심뉴스", platform: "국내 뉴스", type: "nate-news", url: "https://news.nate.com/rank/interest", encoding: "euc-kr" },
   { name: "연합뉴스", platform: "국내 뉴스", type: "rss-news-kr", url: "https://www.yna.co.kr/rss/news.xml" },
-  { name: "SBS 뉴스", platform: "국내 뉴스", type: "rss-news-kr", url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=00", titleSuffix: "SBS 뉴스" },
+  { name: "SBS 뉴스", platform: "국내 뉴스", type: "rss-news-kr", url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03", titleSuffix: "SBS 뉴스" },
 ];
+
+// 1 for YouTube platform + non-atom feed sources + community scrapers
+export const TOTAL_SOURCE_COUNT = 1 + sources.filter((s) => s.type !== "atom").length + communitySources.length;
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -256,7 +254,7 @@ async function fetchDetailPublishedAt(url: string, source: CommunitySource | Fee
 
 async function fetchSource(source: FeedSource): Promise<StreamItem[]> {
   const response = await fetch(source.url, {
-    headers: { "User-Agent": "DalbitMedia-Stream/1.0 (+https://dalbitmedia.com)" },
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; DalbitMedia-Stream/1.0; +https://dalbitmedia.com)" },
     next: { revalidate: STREAM_REVALIDATE_SECONDS },
   });
 
@@ -437,12 +435,7 @@ async function fetchCommunitySource(source: CommunitySource): Promise<StreamItem
         { label: "조회", value: metricValue(row.find(".m_no").text()) },
         { label: "댓글", value: metricValue(row.find(".replyNum").text()) },
       ];
-    } else if (source.name === "인스티즈") {
-      trendMetrics = [
-        { label: "조회", value: metricValue(row.find(".listno").eq(1).text()) },
-        { label: "추천", value: metricValue(row.find(".listno").eq(2).text()) },
-        { label: "댓글", value: metricValue(row.find(".cmt3").attr("title")) },
-      ];
+
     } else if (source.name === "네이트 판 랭킹") {
       trendMetrics = [
         { label: "인기 순위", value: metricValue(row.find(".rankNum span span").text()) },
@@ -476,15 +469,15 @@ async function fetchCommunitySource(source: CommunitySource): Promise<StreamItem
         { label: "조회", value: metricValue(row.find(".col-view").text()) },
         { label: "추쳍", value: metricValue(row.find(".col-rate, .col-vote").first().text()) },
         { label: "댓글", value: metricValue(row.find(".col-comment").text()) },
-      ];    }
+      ];
+    }
     trendMetrics = trendMetrics.filter((metric) => metric.value > 0);
     if (source.ranked && trendMetrics.length === 0) trendMetrics = [{ label: "인기 순위", value: items.length + 1 }];
 
     const url = new URL(href, source.url).toString();
     const rawPublishedAt = source.name === "DCInside" ? row.find(".gall_date").attr("title") ?? ""
       : source.name === "더쿠" || source.name === "루리웹" ? row.find(".time").first().text()
-        : source.name === "인스티즈" ? row.find(".listno").first().text()
-          : source.name === "82cook 자유게시판" ? row.find(".regdate").attr("title") ?? row.find(".regdate").text()
+        : source.name === "82cook 자유게시판" ? row.find(".regdate").attr("title") ?? row.find(".regdate").text()
             : source.name === "디미토리 이슈" ? row.find(".time").text()
           : source.name === "클리앙" ? row.find(".timestamp").first().text()
             : source.name === "보배드림 베스트" ? row.find(".date").first().text()
@@ -520,8 +513,12 @@ async function fetchCommunitySource(source: CommunitySource): Promise<StreamItem
 export async function collectMediaStream(): Promise<StreamData> {
   const youtubeSources = sources.filter((source) => source.type === "atom");
   const socialSources = sources.filter((source) => source.type !== "atom");
-  const results: PromiseSettledResult<StreamItem[]>[] = await Promise.allSettled(youtubeSources.map(fetchSource));
-  const inactiveSources = youtubeSources.filter((_, index) => results[index].status === "rejected").map((source) => source.name);
+  const youtubeResults: PromiseSettledResult<StreamItem[]>[] = await Promise.allSettled(youtubeSources.map(fetchSource));
+  const results: PromiseSettledResult<StreamItem[]>[] = [...youtubeResults];
+  const inactiveSources: string[] = [];
+
+  // YouTube channels are one logical source — only mark inactive if every channel failed
+  if (youtubeResults.every((r) => r.status === "rejected")) inactiveSources.push("YouTube");
 
   for (const source of socialSources) {
     try {
@@ -541,6 +538,9 @@ export async function collectMediaStream(): Promise<StreamData> {
     }
   }
 
+  const youtubeActive = youtubeResults.some((r) => r.status === "fulfilled") ? 1 : 0;
+  const nonYoutubeActive = results.slice(youtubeSources.length).filter((r) => r.status === "fulfilled").length;
+
   const seenUrls = new Set<string>();
   const seenTitles = new Set<string>();
   const uniqueItems = results
@@ -559,8 +559,8 @@ export async function collectMediaStream(): Promise<StreamData> {
   return {
     items: uniqueItems,
     updatedAt: new Date().toISOString(),
-    activeSources: results.filter((result) => result.status === "fulfilled").length,
-    totalSources: sources.length + communitySources.length,
+    activeSources: youtubeActive + nonYoutubeActive,
+    totalSources: 1 + socialSources.length + communitySources.length,
     inactiveSources,
   };
 }

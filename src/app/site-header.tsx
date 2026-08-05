@@ -26,32 +26,34 @@ export function SiteHeader({ solid = false, compact = false }: SiteHeaderProps) 
 
   return (
     <header className={`site-header${solid ? " site-header-solid" : ""}${compact ? " site-header-compact" : ""}`}>
-      <Link className="brand" href="/" aria-label="달빛미디어 홈">
-        <LogoMark />
-        <span>달빛미디어</span>
-      </Link>
+      <div className="site-header-inner">
+        <Link className="brand" href="/" aria-label="달빛미디어 홈">
+          <LogoMark />
+          <span>달빛미디어</span>
+        </Link>
 
-      <nav className="desktop-nav" aria-label="주요 메뉴">
-        {navigationLinks.map(({ href, label }) => (
-          <Link key={href} href={href}>{label}</Link>
-        ))}
-      </nav>
+        <nav className="desktop-nav" aria-label="주요 메뉴">
+          {navigationLinks.map(({ href, label }) => (
+            <Link key={href} href={href}>{label}</Link>
+          ))}
+        </nav>
 
-      <div className="header-actions">
-        <a className="header-contact" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">
-          <MessageCircle size={17} strokeWidth={2} /> 문의하기
-        </a>
+        <div className="header-actions">
+          <a className="header-contact" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">
+            <MessageCircle size={17} strokeWidth={2} /> 문의하기
+          </a>
 
-        <button
-          type="button"
-          className="mobile-menu-button"
-          aria-label={menuOpen ? "모바일 메뉴 닫기" : "모바일 메뉴 열기"}
-          aria-expanded={menuOpen}
-          aria-controls="site-header-mobile-menu"
-          onClick={() => setMenuOpen((current) => !current)}
-        >
-          {menuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
-        </button>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            aria-label={menuOpen ? "모바일 메뉴 닫기" : "모바일 메뉴 열기"}
+            aria-expanded={menuOpen}
+            aria-controls="site-header-mobile-menu"
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            {menuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
+          </button>
+        </div>
       </div>
 
       {menuOpen ? (

@@ -28,6 +28,74 @@ const platformClasses: Record<Platform, string> = {
   "국내 커뮤니티": "platform-community",
 };
 
+const sourceDomains: Record<string, string> = {
+  "DCInside": "dcinside.com",
+  "더쿠": "theqoo.net",
+  "인스티즈": "instiz.net",
+  "네이트 판 랭킹": "pann.nate.com",
+  "82cook 자유게시판": "82cook.com",
+  "디미토리 이슈": "dmitory.com",
+  "클리앙": "clien.net",
+  "루리웹": "ruliweb.com",
+  "뽐뿌 HOT": "ppomppu.co.kr",
+  "MLBPark 베스트": "mlbpark.donga.com",
+  "보배드림 베스트": "bobaedream.co.kr",
+  "아카라이브 싱글벙글": "arca.live",
+  "에펨코리아": "fmkorea.com",
+  "오늘의유머": "todayhumor.co.kr",
+  "개드립": "dogdrip.net",
+  "PGR21": "pgr21.com",
+  "아카라이브": "arca.live",
+  "나무위키": "namu.wiki",
+  "네이버 많이 본 뉴스": "naver.com",
+  "네이트 관심뉴스": "nate.com",
+  "연합뉴스": "yna.co.kr",
+  "SBS 뉴스": "sbs.co.kr",
+  "Google Trends KR": "trends.google.com",
+  "HYBE LABELS": "youtube.com",
+  "SMTOWN": "youtube.com",
+  "JYP Entertainment": "youtube.com",
+  "MBCkpop": "youtube.com",
+  "1theK (\uc6d0\ub354\ucf00\uc774)": "youtube.com",
+  "Stone Music Entertainment": "youtube.com",
+  "Mnet K-POP": "youtube.com",
+  "STARSHIP ENTERTAINMENT": "youtube.com",
+  "YouTube": "youtube.com",
+  "검색 트렌드": "trends.google.com",
+  "국내 뉴스": "naver.com",
+};
+
+const sourceDisplayNames: Record<string, string> = {
+  "82cook 자유게시판": "82cook",
+  "네이트 판 랭킹": "네이트 판",
+  "보배드림 베스트": "보배드림",
+  "MLBPark 베스트": "MLBPark",
+  "뽐뿌 HOT": "뽐뿌",
+  "디미토리 이슈": "디미토리",
+  "아카라이브 싱글벙글": "아카라이브",
+  "네이버 많이 본 뉴스": "네이버",
+  "네이트 관심뉴스": "네이트",
+  "SBS 뉴스": "SBS",
+  "Google Trends KR": "Trends",
+  "HYBE LABELS": "YouTube",
+  "SMTOWN": "YouTube",
+  "JYP Entertainment": "YouTube",
+  "MBCkpop": "YouTube",
+  "1theK (원더케이)": "YouTube",
+  "Stone Music Entertainment": "YouTube",
+  "Mnet K-POP": "YouTube",
+  "STARSHIP ENTERTAINMENT": "YouTube",
+};
+
+function sourceDisplayName(name: string): string {
+  return sourceDisplayNames[name] ?? name;
+}
+
+function sourceFaviconUrl(name: string): string | undefined {
+  const domain = sourceDomains[name];
+  return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : undefined;
+}
+
 function relativeTime(date: string, referenceTime: number) {
   const elapsedMinutes = Math.max(0, Math.floor((referenceTime - Date.parse(date)) / 60_000));
   if (elapsedMinutes < 60) return `${elapsedMinutes}분 전`;
@@ -70,6 +138,7 @@ const StreamCard = memo(function StreamCard({
   failedImages: Set<string>;
 }) {
   const Icon = platformIcons[item.platform];
+  const favicon = sourceFaviconUrl(item.source);
   const showImage = Boolean(item.image && !failedImages.has(item.image));
   const titleClass = showImage && item.title.length > 60 ? "stream-card-title-compact" : undefined;
   const visibleMetrics = item.trendMetrics.filter((metric) => metric.label !== "작성 시각 미제공" && metric.label !== "공개 인덱스");
@@ -93,7 +162,12 @@ const StreamCard = memo(function StreamCard({
       )}
       <div className="stream-card-body">
         <div className="stream-card-meta">
-          <span className={`platform-badge ${platformClasses[item.platform]}`}><Icon size={14} /> {item.source}</span>
+          <span className={`platform-badge ${platformClasses[item.platform]}`}>
+            {favicon
+              ? <img src={favicon} alt="" width={12} height={12} className="source-favicon" loading="lazy" aria-hidden />
+              : <Icon size={14} />}
+            {sourceDisplayName(item.source)}
+          </span>
           <span><Clock3 size={13} /> {hasKnownPublishedAt(item.trendMetrics) ? relativeTime(item.publishedAt, referenceTime) : storedTime(item.collectedAt, referenceTime)}</span>
         </div>
         <h2 className={titleClass}><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h2>
@@ -306,8 +380,11 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
             onClick={() => void selectSource(key)}
             type="button"
           >
-            <strong>{key}</strong>
-            <span>{count}건 저장</span>
+            <span className="filter-source-label">
+              {sourceFaviconUrl(key) && <img src={sourceFaviconUrl(key)} alt="" width={13} height={13} className="source-favicon" loading="lazy" aria-hidden />}
+              <strong>{sourceDisplayName(key)}</strong>
+              <span>{count}</span>
+            </span>
           </button>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, CalendarDays, Clock3, Database, Radio } from "lucide-react";
+import { Activity, CalendarDays, Clock3, Database, Radio, CalendarRange } from "lucide-react";
+
 import { getProperNounTrendData, type ProperNounTrend } from "@/lib/stream-store";
 import { SiteHeader } from "../site-header";
 
@@ -17,6 +18,8 @@ const windows = [
   ["day", "24시간", "최근 하루", Clock3],
   ["week", "7일", "최근 일주일", CalendarDays],
   ["month", "30일", "최근 한 달", Database],
+  ["quarter", "3개월", "최근 3개월", CalendarRange],
+  ["half", "6개월", "최근 6개월", CalendarRange],
 ] as const;
 
 function TrendList({ trends }: { trends: ProperNounTrend[] }) {
@@ -24,7 +27,12 @@ function TrendList({ trends }: { trends: ProperNounTrend[] }) {
   const maximum = trends[0]?.count ?? 1;
   return <ol className="trend-ranking">
     {trends.map((trend, index) => <li key={trend.normalized}>
-      <span className="trend-rank">{String(index + 1).padStart(2, "0")}</span>
+      <span className="trend-rank">
+        {String(index + 1).padStart(2, "0")}
+        {trend.rankChange === "new" && <mark className="rank-badge rank-new">N</mark>}
+        {typeof trend.rankChange === "number" && trend.rankChange > 0 && <mark className="rank-badge rank-up">↑{trend.rankChange}</mark>}
+        {typeof trend.rankChange === "number" && trend.rankChange < 0 && <mark className="rank-badge rank-dn">↓{Math.abs(trend.rankChange)}</mark>}
+      </span>
       <div className="trend-name">
         <Link href={`/stream?tag=${encodeURIComponent(trend.normalized)}`}>{trend.displayName}</Link>
         <span className="trend-bar"><i style={{ width: `${Math.max(8, trend.count / maximum * 100)}%` }} /></span>
