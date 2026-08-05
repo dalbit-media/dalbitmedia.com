@@ -31,19 +31,21 @@ export default async function StreamPage({ searchParams }: { searchParams: Promi
     <main className="stream-page">
       <SiteHeader solid compact />
       <section className="stream-hero">
-        <div>
-          <p className="eyebrow">LIVE CULTURE SIGNAL</p>
-          <h1>미디어 스트림</h1>
-        </div>
-        <div className="stream-summary">
-          <div className="stream-status"><RefreshCw size={16} /><span>30분마다 갱신 · {updatedAt} 기준</span></div>
-          <span className="source-health" tabIndex={0} aria-describedby="inactive-source-tooltip">
-            활성 소스 {stream.activeSources}/{stream.totalSources}
-            <span className="source-health-tooltip" id="inactive-source-tooltip" role="tooltip">
-              <strong>비활성 소스</strong>
-              {stream.inactiveSources.length > 0 ? stream.inactiveSources.join(" · ") : "없음"}
+        <div className="page-width-inner">
+          <div>
+            <p className="eyebrow">LIVE CULTURE SIGNAL</p>
+            <h1>미디어 스트림</h1>
+          </div>
+          <div className="stream-summary">
+            <div className="stream-status"><RefreshCw size={16} /><span>30분마다 갱신 · {updatedAt} 기준</span></div>
+            <span className="source-health" tabIndex={0} aria-describedby="inactive-source-tooltip">
+              활성 소스 {stream.activeSources}/{stream.totalSources}
+              <span className="source-health-tooltip" id="inactive-source-tooltip" role="tooltip">
+                <strong>비활성 소스</strong>
+                {stream.inactiveSources.length > 0 ? stream.inactiveSources.join(" · ") : "없음"}
+              </span>
             </span>
-          </span>
+          </div>
         </div>
       </section>
       <section className="stream-content">

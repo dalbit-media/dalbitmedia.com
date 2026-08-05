@@ -50,11 +50,13 @@ export default function TrendsPage() {
   return <main className="trends-page">
     <SiteHeader solid compact />
     <section className="trends-heading">
-      <div>
-        <p className="eyebrow">KOREAN ENTITY SIGNAL</p>
-        <h1>키워드 트렌드</h1>
+      <div className="page-width-inner">
+        <div>
+          <p className="eyebrow">KOREAN ENTITY SIGNAL</p>
+          <h1>키워드 트렌드</h1>
+        </div>
+        <div className="trends-tracking"><Activity size={17} /><span>{formatter.format(new Date(data.trackedSince))}부터 추적</span></div>
       </div>
-      <div className="trends-tracking"><Activity size={17} /><span>{formatter.format(new Date(data.trackedSince))}부터 추적</span></div>
     </section>
 
     <section className="trends-content">

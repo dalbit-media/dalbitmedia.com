@@ -217,8 +217,10 @@ footer { display: grid; gap: 36px; padding: 58px clamp(22px, 7vw, 106px) 42px; b
 footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,255,.12); font-size: 10px; letter-spacing: 1px; }
 
 .stream-page { min-height: 100vh; background: #e9eef1; }
-.stream-hero { display: grid; grid-template-columns: auto 1fr; gap: clamp(36px, 7vw, 100px); align-items: center; padding: 38px clamp(18px, 4vw, 54px) 42px; background: var(--ink); color: white; }
-.stream-hero > * { max-width: 760px; }
+.page-width-inner { max-width: 1600px; margin-inline: auto; width: 100%; }
+.stream-hero { background: var(--ink); color: white; }
+.stream-hero .page-width-inner { display: grid; grid-template-columns: auto 1fr; gap: clamp(36px, 7vw, 100px); align-items: center; padding: 38px clamp(18px, 4vw, 54px) 42px; }
+.stream-hero .page-width-inner > * { max-width: 760px; }
 .stream-hero .eyebrow { margin-bottom: 8px; color: var(--yellow); font-size: 10px; }
 .stream-hero h1 { margin: 0; font-family: var(--font-serif), serif; font-size: clamp(34px, 4.5vw, 54px); line-height: 1.15; }
 .stream-summary { display: flex; align-items: flex-end; flex-direction: column; justify-self: end; }
@@ -301,7 +303,8 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
 .stream-empty { padding: 70px 0; border-top: 1px solid var(--line); color: var(--muted); text-align: center; }
 
 .trends-page { min-height: 100vh; background: #e9eef1; }
-.trends-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; padding: 38px clamp(18px, 4vw, 54px) 42px; background: var(--ink); color: white; }
+.trends-heading { background: var(--ink); color: white; }
+.trends-heading .page-width-inner { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; padding: 38px clamp(18px, 4vw, 54px) 42px; }
 .trends-heading .eyebrow { margin-bottom: 9px; color: var(--yellow); font-size: 10px; }
 .trends-heading h1 { margin: 0; font-family: var(--font-serif), serif; font-size: clamp(34px, 4.5vw, 54px); line-height: 1.15; }
 .trends-tracking { display: flex; align-items: center; gap: 9px; color: rgba(255,255,255,.65); font-size: 12px; }
@@ -379,7 +382,7 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
   .company-info div:last-child { grid-column: 1 / -1; border-bottom: 0; }
   .footer-social { grid-template-columns: 1fr; gap: 24px; }
   .footer-social .footer-channel-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stream-hero { grid-template-columns: auto 1fr; align-items: center; }
+  .stream-hero .page-width-inner { grid-template-columns: auto 1fr; align-items: center; }
   .stream-summary { align-items: flex-end; justify-self: end; max-width: 620px; }
   .stream-filters { display: flex; }
   .stream-filters button { height: 34px; }
@@ -438,13 +441,13 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
   .company-info div:last-child { border-bottom: 0; }
   .footer-social .footer-channel-groups { grid-template-columns: 1fr; }
   .footer-channel-group nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stream-hero { grid-template-columns: 1fr; gap: 22px; align-items: start; padding-top: 28px; padding-bottom: 30px; }
+  .stream-hero .page-width-inner { grid-template-columns: 1fr; gap: 22px; align-items: start; padding-top: 28px; padding-bottom: 30px; }
   .stream-summary { align-items: flex-start; justify-self: start; }
   .stream-hero h1 { font-size: 34px; }
   .stream-content .section-label { margin-bottom: 24px; }
   .stream-grid { grid-template-columns: 1fr; }
   .stream-card, .stream-card-featured { min-height: 280px; }
-  .trends-heading { align-items: flex-start; flex-direction: column; gap: 22px; }
+  .trends-heading .page-width-inner { align-items: flex-start; flex-direction: column; gap: 22px; }
   .trend-ranking li { grid-template-columns: 32px minmax(90px, 1fr) 90px; padding-right: 14px; padding-left: 14px; }
   .trend-history > header { align-items: flex-start; flex-direction: column; }
   .trend-timeline article { grid-template-columns: 1fr; }
