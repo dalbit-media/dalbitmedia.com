@@ -213,6 +213,7 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [activeTag, setActiveTag] = useState(initialTag);
+  const [showAllTags, setShowAllTags] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [failedImages, setFailedImages] = useState(() => new Set<string>());
@@ -233,17 +234,25 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   const suggestionTags = useMemo(() => {
     const query = searchInput.trim().toLowerCase();
     const candidates = initialTrends.filter((trend) => trend.count > 0);
-    if (!query) return candidates.slice(0, 6);
+    if (!query) return candidates.slice(0, 24);
     return candidates.filter((trend) => {
       const haystack = `${trend.displayName} ${trend.normalized}`.toLowerCase();
       const compactQuery = query.replace(/\s+/g, "");
       return haystack.includes(query) || haystack.replace(/\s+/g, "").includes(compactQuery);
-    }).slice(0, 6);
+    }).slice(0, 24);
   }, [initialTrends, searchInput]);
+  const visibleTagSuggestions = useMemo(() => {
+    if (showAllTags) return suggestionTags;
+    return suggestionTags.slice(0, 10);
+  }, [showAllTags, suggestionTags]);
 
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
+
+  useEffect(() => {
+    setShowAllTags(false);
+  }, [activeTag, searchInput]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setReferenceTime(Date.now()), 30_000);
@@ -383,21 +392,27 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
       </form>
       {suggestionTags.length > 0 && (
         <div className="stream-tag-suggestions" aria-label="관련 추천 태그">
-          {suggestionTags.map((tag) => {
-            const size = Math.max(13, Math.min(17, 13 + Math.round((tag.count / Math.max(1, suggestionTags[0]?.count ?? 1)) * 4)));
-            return (
-              <button
-                key={tag.normalized}
-                type="button"
-                className={`stream-tag-suggestion${activeTag === tag.normalized ? " is-active" : ""}`}
-                onClick={() => void selectTag(tag.normalized)}
-                style={{ fontSize: `${size}px` }}
-              >
-                <strong>#{tag.displayName}</strong>
-                <span>{tag.count}회</span>
-              </button>
-            );
-          })}
+          {visibleTagSuggestions.map((tag) => (
+            <button
+              key={tag.normalized}
+              type="button"
+              className={`stream-tag-suggestion${activeTag === tag.normalized ? " is-active" : ""}`}
+              onClick={() => void selectTag(tag.normalized)}
+            >
+              <strong>#{tag.displayName}</strong>
+              <span>{tag.count}회</span>
+            </button>
+          ))}
+          {!showAllTags && suggestionTags.length > visibleTagSuggestions.length && (
+            <button type="button" className="stream-tag-toggle" onClick={() => setShowAllTags(true)}>
+              더 보기 ({suggestionTags.length - visibleTagSuggestions.length})
+            </button>
+          )}
+          {showAllTags && suggestionTags.length > 10 && (
+            <button type="button" className="stream-tag-toggle" onClick={() => setShowAllTags(false)}>
+              접기
+            </button>
+          )}
         </div>
       )}
       {activeTag && <div className="stream-active-tag"><Tag size={14} /><span>{activeTag}</span><button type="button" onClick={() => void selectTag("")} aria-label="태그 필터 해제" title="태그 필터 해제"><X size={14} /></button></div>}

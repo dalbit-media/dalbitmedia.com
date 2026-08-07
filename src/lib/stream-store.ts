@@ -514,8 +514,8 @@ export function getProperNounTrendData(now = new Date()): ProperNounTrendData {
   const since = (milliseconds: number) => new Date(now.getTime() - milliseconds).toISOString();
   const latestOccurrence = db.prepare("SELECT MAX(observed_at) AS observed_at FROM proper_noun_occurrences").get() as { observed_at: string | null };
   const realtimeSince = latestOccurrence.observed_at
-    ? new Date(new Date(latestOccurrence.observed_at).getTime() - 30 * 60_000).toISOString()
-    : since(30 * 60_000);
+    ? new Date(new Date(latestOccurrence.observed_at).getTime() - 6 * 60 * 60_000).toISOString()
+    : since(6 * 60 * 60_000);
   const startMonth = new Date(now);
   startMonth.setUTCDate(1);
   startMonth.setUTCHours(0, 0, 0, 0);

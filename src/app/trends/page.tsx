@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const windows = [
-  ["realtime", "실시간", "최근 30분", Radio],
+  ["realtime", "실시간", "최근 6시간", Radio],
   ["day", "24시간", "최근 하루", Clock3],
   ["week", "7일", "최근 일주일", CalendarDays],
   ["month", "30일", "최근 한 달", Database],
@@ -46,6 +46,7 @@ export default function TrendsPage() {
   const data = getProperNounTrendData();
   const formatter = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
   const monthFormatter = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", year: "numeric", month: "long" });
+  const realtimeTotals = data.windows.realtime.reduce((sum, trend) => sum + trend.count, 0);
 
   return <main className="trends-page">
     <SiteHeader solid compact />
@@ -60,11 +61,30 @@ export default function TrendsPage() {
     </section>
 
     <section className="trends-content">
+      <div className="trend-summary">
+        <div>
+          <span>AGGREGATED TREND</span>
+          <strong>총 {realtimeTotals.toLocaleString("ko-KR")}건 · {data.windows.realtime.length}개 키워드</strong>
+        </div>
+        <p>최근 6시간 기준으로 집계된 실시간 트렌드입니다.</p>
+      </div>
       <div className="trend-window-grid">
-        {windows.map(([key, title, subtitle, Icon]) => <article className="trend-window" key={key}>
-          <header><div><span>{subtitle}</span><h2>{title}</h2></div><Icon size={20} /></header>
-          <TrendList trends={data.windows[key]} />
-        </article>)}
+        {windows.map(([key, title, subtitle, Icon]) => {
+          const totalForWindow = data.windows[key].reduce((sum, trend) => sum + trend.count, 0);
+          return <article className="trend-window" key={key}>
+            <header>
+              <div>
+                <span>{subtitle}</span>
+                <h2>{title}</h2>
+              </div>
+              <div className="trend-window-meta">
+                <strong>{totalForWindow.toLocaleString("ko-KR")}건</strong>
+                <Icon size={20} />
+              </div>
+            </header>
+            <TrendList trends={data.windows[key]} />
+          </article>;
+        })}
       </div>
 
       <section className="trend-history">

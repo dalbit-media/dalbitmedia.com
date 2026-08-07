@@ -240,11 +240,11 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
 .stream-search button { display: grid; width: 48px; min-width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border: 0; background: var(--ink); color: white; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .stream-search button:hover { background: var(--coral); }
 .stream-search button:disabled { cursor: wait; opacity: .55; }
-.stream-tag-suggestions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 0 0 18px; }
-.stream-tag-suggestion { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-height: 64px; padding: 10px 12px; border: 1px solid rgba(16,26,44,.14); border-radius: 6px; background: var(--white); color: var(--ink); cursor: pointer; font: inherit; text-align: left; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
-.stream-tag-suggestion strong { overflow: hidden; font-weight: 800; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-.stream-tag-suggestion span { color: var(--muted); font-size: 10px; font-weight: 800; }
-.stream-tag-suggestion:hover, .stream-tag-suggestion.is-active { border-color: var(--coral); box-shadow: 0 8px 20px rgba(255,102,72,.12); transform: translateY(-2px); }
+.stream-tag-suggestions { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 18px; }
+.stream-tag-suggestion, .stream-tag-toggle { display: inline-flex; height: 34px; flex: 1 1 140px; align-items: center; justify-content: center; gap: 7px; min-width: 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; white-space: nowrap; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease; }
+.stream-tag-suggestion strong { overflow: hidden; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.stream-tag-suggestion span { color: inherit; font-size: 10px; font-weight: 600; opacity: .8; }
+.stream-tag-suggestion:hover, .stream-tag-suggestion.is-active, .stream-tag-toggle:hover { border-color: var(--ink); background: var(--ink); color: white; }
 .stream-active-tag { display: inline-flex; height: 34px; align-items: center; gap: 7px; margin: 0 0 18px; padding-left: 11px; border: 1px solid var(--coral); border-radius: 4px; background: #fff4eb; color: var(--ink); font-size: 12px; font-weight: 800; }
 .stream-active-tag > svg { color: var(--coral); }
 .stream-active-tag button { display: grid; width: 33px; height: 32px; place-items: center; border: 0; border-left: 1px solid rgba(255,102,72,.3); background: transparent; color: var(--coral); cursor: pointer; }
@@ -392,7 +392,7 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
   .stream-filters { display: flex; }
   .stream-filters button { height: 34px; }
   .stream-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stream-tag-suggestions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stream-tag-suggestion, .stream-tag-toggle { flex-basis: calc(50% - 7px); max-width: calc(50% - 7px); }
   .trend-window-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -452,7 +452,7 @@ footer > p { margin: 0; padding-top: 25px; border-top: 1px solid rgba(255,255,25
   .stream-hero h1 { font-size: 34px; }
   .stream-content .section-label { margin-bottom: 24px; }
   .stream-grid { grid-template-columns: 1fr; }
-  .stream-tag-suggestions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stream-tag-suggestion, .stream-tag-toggle { flex-basis: calc(50% - 7px); max-width: calc(50% - 7px); }
   .stream-card, .stream-card-featured { min-height: 280px; }
   .trends-heading .page-width-inner { align-items: flex-start; flex-direction: column; gap: 22px; }
   .trend-ranking li { grid-template-columns: 32px minmax(90px, 1fr) 90px; padding-right: 14px; padding-left: 14px; }
