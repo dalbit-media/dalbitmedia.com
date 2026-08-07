@@ -76,7 +76,7 @@ export default async function StreamPage({ searchParams }: { searchParams: Promi
       </section>
       <section className="stream-content">
         <div className="section-label"><span>01</span> LATEST FEEDS</div>
-        <StreamFeed initialPage={stream} initialSource="전체" initialTag={initialTag} initialTrends={trendData.windows.realtime.slice(0, 12)} renderedAt={renderedAt} />
+        <StreamFeed initialPage={stream} initialSource="전체" initialTag={initialTag} initialTrends={trendData.windows.realtime.slice(0, 100)} renderedAt={renderedAt} />
       </section>
       <footer>
         <div className="footer-brand"><LogoMark /><div><strong>달빛미디어</strong><span>창작자를 위한 운영 파트너</span></div></div>

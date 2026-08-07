@@ -5,10 +5,27 @@ import { Activity, CalendarDays, Clock3, Database, Radio, CalendarRange } from "
 import { getProperNounTrendData, type ProperNounTrend } from "@/lib/stream-store";
 import { SiteHeader } from "../site-header";
 
-export const metadata: Metadata = {
-  title: "한국 고유명사 트렌드 | 달빛미디어",
-  description: "한국 미디어 피드에서 관측된 고유명사의 실시간 및 누적 흐름을 확인하세요.",
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: "한국 미디어 트렌드 랭킹 100 | 달빛미디어",
+    description: "한국 미디어 피드에서 관측된 상위 100개 키워드와 실시간·주간·월간 트렌드를 확인하세요.",
+    alternates: { canonical: "/trends" },
+    keywords: ["한국 미디어 트렌드", "트렌드 랭킹", "키워드 트렌드", "고유명사 트렌드", "달빛미디어"],
+    openGraph: {
+      title: "한국 미디어 트렌드 랭킹 100 | 달빛미디어",
+      description: "한국 미디어 피드에서 관측된 상위 100개 키워드와 실시간·주간·월간 트렌드를 확인하세요.",
+      url: "/trends",
+      type: "website",
+      locale: "ko_KR",
+      siteName: "달빛미디어",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "한국 미디어 트렌드 랭킹 100 | 달빛미디어",
+      description: "한국 미디어 피드에서 관측된 상위 100개 키워드와 실시간·주간·월간 트렌드를 확인하세요.",
+    },
+  };
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +63,6 @@ export default function TrendsPage() {
   const data = getProperNounTrendData();
   const formatter = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
   const monthFormatter = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", year: "numeric", month: "long" });
-  const realtimeTotals = data.windows.realtime.reduce((sum, trend) => sum + trend.count, 0);
 
   return <main className="trends-page">
     <SiteHeader solid compact />
@@ -61,13 +77,6 @@ export default function TrendsPage() {
     </section>
 
     <section className="trends-content">
-      <div className="trend-summary">
-        <div>
-          <span>AGGREGATED TREND</span>
-          <strong>총 {realtimeTotals.toLocaleString("ko-KR")}건 · {data.windows.realtime.length}개 키워드</strong>
-        </div>
-        <p>최근 6시간 기준으로 집계된 실시간 트렌드입니다.</p>
-      </div>
       <div className="trend-window-grid">
         {windows.map(([key, title, subtitle, Icon]) => {
           const totalForWindow = data.windows[key].reduce((sum, trend) => sum + trend.count, 0);

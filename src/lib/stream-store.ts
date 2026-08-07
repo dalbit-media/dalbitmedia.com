@@ -199,7 +199,7 @@ function initializeProperNounEngine(db: DatabaseSync) {
     }
     if (!getMetadata.get("proper_noun_backfill_complete") || storedVersion !== engineVersion) {
       const rows = db.prepare("SELECT id, title, description, published_at, source FROM stream_items").all() as Array<{ id: string; title: string; description: string | null; published_at: string; source: string }>;
-      const matchesByItem = extractProperNouns(rows.map((row) => ({ id: row.id, title: row.title, description: row.description ?? undefined })));
+      const matchesByItem = extractProperNouns(rows.map((row) => ({ id: row.id, title: row.title, source: row.source, description: row.description ?? undefined })));
       for (const row of rows) recordProperNouns(db, row.id, row.published_at, row.source, startedAt, matchesByItem.get(row.id) ?? []);
       setMetadata.run("proper_noun_backfill_complete", startedAt);
       setMetadata.run("proper_noun_engine_version", engineVersion);
@@ -397,7 +397,7 @@ export function getSourceSummaries(): SourceSummary[] {
     });
 }
 
-export function getStoredStreamPage(options: { cursor?: string; filter?: string; search?: string; tag?: string; limit?: number } = {}): StoredStreamPage {
+export function getStoredStreamPage(options: { cursor?: string; filter?: string; search?: string; tag?: string; sort?: "newest" | "trending"; period?: "day" | "week" | "month" | "season" | "year" | "all"; limit?: number } = {}): StoredStreamPage {
   const db = getDatabase();
   const cursor = decodeCursor(options.cursor);
   const limit = Math.min(48, Math.max(1, options.limit ?? 24));
@@ -415,8 +415,19 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
   }
   if (options.search) {
     const search = `%${options.search.replace(/[\\%_]/g, "\\$&")}%`;
-    conditions.push("(title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR source LIKE ? ESCAPE '\\' OR platform LIKE ? ESCAPE '\\')");
-    parameters.push(search, search, search, search);
+    conditions.push(`(
+      title LIKE ? ESCAPE '\\'
+      OR description LIKE ? ESCAPE '\\'
+      OR source LIKE ? ESCAPE '\\'
+      OR platform LIKE ? ESCAPE '\\'
+      OR EXISTS (
+        SELECT 1 FROM proper_noun_occurrences occurrence
+        JOIN proper_nouns noun ON noun.id = occurrence.proper_noun_id
+        WHERE occurrence.item_id = stream_items.id
+        AND (noun.display_name LIKE ? ESCAPE '\\' OR noun.normalized LIKE ? ESCAPE '\\')
+      )
+    )`);
+    parameters.push(search, search, search, search, search, search);
   }
   if (options.tag) {
     conditions.push(`EXISTS (
@@ -426,18 +437,32 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
     )`);
     parameters.push(normalizeProperNoun(options.tag));
   }
+  if (options.period && options.period !== "all") {
+    const now = Date.now();
+    const ranges = {
+      day: 24 * 60 * 60_000,
+      week: 7 * 24 * 60 * 60_000,
+      month: 30 * 24 * 60 * 60_000,
+      season: 90 * 24 * 60 * 60_000,
+      year: 365 * 24 * 60 * 60_000,
+    } satisfies Record<NonNullable<typeof options.period>, number>;
+    const cutoff = new Date(now - ranges[options.period]).toISOString();
+    conditions.push("published_at >= ?");
+    parameters.push(cutoff);
+  }
   if (cursor) {
     conditions.push("(published_at < ? OR (published_at = ? AND rowid < ?))");
     parameters.push(cursor.publishedAt, cursor.publishedAt, cursor.rowId);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const orderBy = options.sort === "trending" ? "ORDER BY trend_score DESC, published_at DESC, rowid DESC" : "ORDER BY published_at DESC, rowid DESC";
   const rows = db.prepare(`
     SELECT rowid AS row_id, id AS item_id, batch_id, platform, source, title, url, published_at, image, description,
       trend_score, trend_metrics, collected_at
     FROM stream_items
     ${where}
-    ORDER BY published_at DESC, rowid DESC
+    ${orderBy}
     LIMIT ?
   `).all(...parameters, limit + 1) as unknown as ItemRow[];
   const hasMore = rows.length > limit;
@@ -538,12 +563,12 @@ export function getProperNounTrendData(now = new Date()): ProperNounTrendData {
   }
 
   const raw = {
-    realtime: getProperNounTrendsSince(db, realtimeSince, 20),
-    day: getProperNounTrendsSince(db, since(24 * 60 * 60_000), 20, 2),
-    week: getProperNounTrendsSince(db, since(7 * 24 * 60 * 60_000), 20, 2),
-    month: getProperNounTrendsSince(db, since(30 * 24 * 60 * 60_000), 20, 2),
-    quarter: getProperNounTrendsSince(db, since(90 * 24 * 60 * 60_000), 20, 2),
-    half: getProperNounTrendsSince(db, since(180 * 24 * 60 * 60_000), 20, 2),
+    realtime: getProperNounTrendsSince(db, realtimeSince, 100),
+    day: getProperNounTrendsSince(db, since(24 * 60 * 60_000), 100, 2),
+    week: getProperNounTrendsSince(db, since(7 * 24 * 60 * 60_000), 100, 2),
+    month: getProperNounTrendsSince(db, since(30 * 24 * 60 * 60_000), 100, 2),
+    quarter: getProperNounTrendsSince(db, since(90 * 24 * 60 * 60_000), 100, 2),
+    half: getProperNounTrendsSince(db, since(180 * 24 * 60 * 60_000), 100, 2),
   };
   return {
     trackedSince: tracking.value,

@@ -103,8 +103,21 @@ function tokenCandidates(text: string) {
   return candidates;
 }
 
-export function extractProperNouns(items: Array<Pick<StreamItem, "id" | "title" | "description">>) {
-  const itemTexts = new Map(items.map((item) => [item.id, { title: item.title, full: `${item.title} ${item.description ?? ""}`.trim() }]));
+function isLikelySourceBrand(candidate: string, source?: string) {
+  if (!source) return false;
+  const normalizedCandidate = normalizeProperNoun(candidate);
+  if (!normalizedCandidate) return false;
+  const normalizedSource = normalizeProperNoun(source);
+  if (!normalizedSource) return false;
+  if (normalizedCandidate === normalizedSource) return true;
+  if (normalizedSource.includes(normalizedCandidate) || normalizedCandidate.includes(normalizedSource)) return true;
+  const sourceTokens = normalizedSource.split(/\s+/).filter(Boolean);
+  if (sourceTokens.includes(normalizedCandidate)) return true;
+  return sourceTokens.some((token) => normalizedCandidate === token || normalizedCandidate.includes(token) || token.includes(normalizedCandidate));
+}
+
+export function extractProperNouns(items: Array<Pick<StreamItem, "id" | "title" | "description" | "source">>) {
+  const itemTexts = new Map(items.map((item) => [item.id, { title: item.title, source: item.source, full: `${item.title} ${item.description ?? ""}`.trim() }]));
   const discovered = new Map<string, Candidate>();
 
   for (const { full } of itemTexts.values()) {
@@ -138,6 +151,7 @@ export function extractProperNouns(items: Array<Pick<StreamItem, "id" | "title" 
       });
     }
     for (const candidate of tokenCandidates(text.full)) {
+      if (isLikelySourceBrand(candidate.normalized, text.source)) continue;
       const batchCandidate = discovered.get(candidate.normalized);
       if (!batchCandidate?.strong || matches.has(candidate.normalized)) continue;
       matches.set(candidate.normalized, {

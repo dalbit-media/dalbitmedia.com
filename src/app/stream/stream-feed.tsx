@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { type FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Camera, Clock3, Flame, LoaderCircle, MessageCircle, Music2, Newspaper, Search, Tag, Users, Video, X } from "lucide-react";
 import type { Platform } from "@/lib/media-stream";
@@ -194,12 +195,14 @@ const StreamCard = memo(function StreamCard({
   );
 });
 
-async function requestStreamPage(filter: string, cursor?: string, search?: string, tag?: string) {
+async function requestStreamPage(filter: string, cursor?: string, search?: string, tag?: string, sort = "newest", period = "all") {
   const searchParams = new URLSearchParams();
   if (filter !== "전체") searchParams.set("filter", filter);
   if (cursor) searchParams.set("cursor", cursor);
   if (search) searchParams.set("q", search);
   if (tag) searchParams.set("tag", tag);
+  if (sort !== "newest") searchParams.set("sort", sort);
+  if (period !== "all") searchParams.set("period", period);
   const response = await fetch(`/api/stream?${searchParams}`);
   if (!response.ok) throw new Error("스트림을 불러오지 못했습니다.");
   return response.json() as Promise<StoredStreamPage>;
@@ -213,7 +216,10 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [activeTag, setActiveTag] = useState(initialTag);
+  const [sortMode, setSortMode] = useState("newest");
+  const [periodMode, setPeriodMode] = useState("all");
   const [showAllTags, setShowAllTags] = useState(false);
+  const [showSourceFilters, setShowSourceFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [failedImages, setFailedImages] = useState(() => new Set<string>());
@@ -234,16 +240,16 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   const suggestionTags = useMemo(() => {
     const query = searchInput.trim().toLowerCase();
     const candidates = initialTrends.filter((trend) => trend.count > 0);
-    if (!query) return candidates.slice(0, 24);
+    if (!query) return candidates.slice(0, 100);
     return candidates.filter((trend) => {
       const haystack = `${trend.displayName} ${trend.normalized}`.toLowerCase();
       const compactQuery = query.replace(/\s+/g, "");
       return haystack.includes(query) || haystack.replace(/\s+/g, "").includes(compactQuery);
-    }).slice(0, 24);
+    }).slice(0, 100);
   }, [initialTrends, searchInput]);
   const visibleTagSuggestions = useMemo(() => {
     if (showAllTags) return suggestionTags;
-    return suggestionTags.slice(0, 10);
+    return suggestionTags.slice(0, 12);
   }, [showAllTags, suggestionTags]);
 
   useEffect(() => {
@@ -253,6 +259,10 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   useEffect(() => {
     setShowAllTags(false);
   }, [activeTag, searchInput]);
+
+  useEffect(() => {
+    setShowSourceFilters(false);
+  }, [selectedSource]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setReferenceTime(Date.now()), 30_000);
@@ -291,7 +301,7 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
     setLoading(true);
     setError("");
     try {
-      const page = await requestStreamPage(nextSource, nextCursor, nextSearch, nextTag);
+      const page = await requestStreamPage(nextSource, nextCursor, nextSearch, nextTag, sortMode, periodMode);
       if (version !== requestVersion.current) return;
       setItems((current) => {
         const urls = new Set(current.map((item) => item.url));
@@ -306,63 +316,60 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
     }
   }, [activeSearch, activeTag, selectedSource]);
 
-  async function selectSource(source: string) {
-    if (source === selectedSource || loadingRef.current) return;
+  async function refreshStream({
+    source = selectedSource,
+    search = activeSearch,
+    tag = activeTag,
+    nextSort = sortMode,
+    nextPeriod = periodMode,
+  }: { source?: string; search?: string; tag?: string; nextSort?: string; nextPeriod?: string } = {}) {
+    if (loadingRef.current) return;
     const version = ++requestVersion.current;
-    setSelectedSource(source);
     setLoading(true);
     setError("");
     try {
-      const page = await requestStreamPage(source, undefined, activeSearch, activeTag);
+      const page = await requestStreamPage(source, undefined, search, tag || undefined, nextSort, nextPeriod);
       if (version !== requestVersion.current) return;
       setItems(page.items);
       setCursor(page.nextCursor);
       setSources(page.sources);
+      setSelectedSource(source);
+      setActiveSearch(search);
+      setActiveTag(tag);
+      setSortMode(nextSort);
+      setPeriodMode(nextPeriod);
     } catch (requestError) {
       if (version === requestVersion.current) setError(requestError instanceof Error ? requestError.message : "스트림을 불러오지 못했습니다.");
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
+  }
+
+  async function selectSource(source: string) {
+    if (source === selectedSource || loadingRef.current) return;
+    await refreshStream({ source });
   }
 
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const search = searchInput.trim();
-    if (search === activeSearch || loading) return;
-    const version = ++requestVersion.current;
-    setLoading(true);
-    setError("");
-    try {
-      const page = await requestStreamPage(selectedSource, undefined, search, activeTag);
-      if (version !== requestVersion.current) return;
-      setItems(page.items);
-      setCursor(page.nextCursor);
-      setSources(page.sources);
-      setActiveSearch(search);
-    } catch (requestError) {
-      if (version === requestVersion.current) setError(requestError instanceof Error ? requestError.message : "스트림을 불러오지 못했습니다.");
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
-    }
+    if (loading) return;
+    await refreshStream({ search });
   }
 
   async function selectTag(tag: string) {
     if (tag === activeTag || loading) return;
-    const version = ++requestVersion.current;
-    setActiveTag(tag);
-    setLoading(true);
-    setError("");
-    try {
-      const page = await requestStreamPage(selectedSource, undefined, activeSearch, tag || undefined);
-      if (version !== requestVersion.current) return;
-      setItems(page.items);
-      setCursor(page.nextCursor);
-      setSources(page.sources);
-    } catch (requestError) {
-      if (version === requestVersion.current) setError(requestError instanceof Error ? requestError.message : "스트림을 불러오지 못했습니다.");
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
-    }
+    await refreshStream({ tag });
+  }
+
+  async function handleSortChange(value: string) {
+    if (value === sortMode || loadingRef.current) return;
+    await refreshStream({ nextSort: value });
+  }
+
+  async function handlePeriodChange(value: string) {
+    if (value === periodMode || loadingRef.current) return;
+    await refreshStream({ nextPeriod: value });
   }
 
   useEffect(() => {
@@ -378,18 +385,43 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
 
   return (
     <>
-      <form className="stream-search" role="search" onSubmit={(event) => void submitSearch(event)}>
-        <Search size={18} aria-hidden="true" />
-        <input
-          aria-label="미디어 스트림 검색"
-          maxLength={100}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="제목 또는 출처 검색"
-          type="search"
-          value={searchInput}
-        />
-        <button type="submit" disabled={loading} aria-label="검색" title="검색"><Search size={18} /></button>
-      </form>
+      <div className="stream-toolbar-wrap">
+        <div className="stream-toolbar">
+          <form className="stream-search" role="search" onSubmit={(event) => void submitSearch(event)}>
+            <Search size={18} aria-hidden="true" />
+            <input
+              aria-label="미디어 스트림 검색"
+              maxLength={100}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="제목 또는 출처 검색"
+              type="search"
+              value={searchInput}
+            />
+            <button type="submit" disabled={loading} aria-label="검색" title="검색"><Search size={18} /></button>
+          </form>
+          <button type="button" className="stream-source-toggle" onClick={() => setShowSourceFilters((current) => !current)}>
+            {selectedSource === "전체" ? `All (${filterOptions.reduce((sum, option) => sum + option.count, 0)})` : `${sourceDisplayName(selectedSource)} (${filterOptions.find((option) => option.key === selectedSource)?.count ?? 0})`}
+          </button>
+        </div>
+        {showSourceFilters && (
+          <div className="stream-filters" role="group" aria-label="출처 필터">
+            {filterOptions.map(({ key, count }) => (
+              <button
+                className={selectedSource === key ? "active" : ""}
+                key={key}
+                onClick={() => void selectSource(key)}
+                type="button"
+              >
+                <span className="filter-source-label">
+                  {sourceFaviconUrl(key) && <img src={sourceFaviconUrl(key)} alt="" width={13} height={13} className="source-favicon" loading="lazy" aria-hidden />}
+                  <strong>{sourceDisplayName(key)}</strong>
+                  <span>{count}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {suggestionTags.length > 0 && (
         <div className="stream-tag-suggestions" aria-label="관련 추천 태그">
           {visibleTagSuggestions.map((tag) => (
@@ -404,9 +436,9 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
             </button>
           ))}
           {!showAllTags && suggestionTags.length > visibleTagSuggestions.length && (
-            <button type="button" className="stream-tag-toggle" onClick={() => setShowAllTags(true)}>
-              더 보기 ({suggestionTags.length - visibleTagSuggestions.length})
-            </button>
+            <Link href="/trends" className="stream-tag-toggle">
+              상위 100개 보기
+            </Link>
           )}
           {showAllTags && suggestionTags.length > 10 && (
             <button type="button" className="stream-tag-toggle" onClick={() => setShowAllTags(false)}>
@@ -416,22 +448,6 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
         </div>
       )}
       {activeTag && <div className="stream-active-tag"><Tag size={14} /><span>{activeTag}</span><button type="button" onClick={() => void selectTag("")} aria-label="태그 필터 해제" title="태그 필터 해제"><X size={14} /></button></div>}
-      <div className="stream-filters" role="group" aria-label="출처 필터">
-        {filterOptions.map(({ key, count }) => (
-          <button
-            className={selectedSource === key ? "active" : ""}
-            key={key}
-            onClick={() => void selectSource(key)}
-            type="button"
-          >
-            <span className="filter-source-label">
-              {sourceFaviconUrl(key) && <img src={sourceFaviconUrl(key)} alt="" width={13} height={13} className="source-favicon" loading="lazy" aria-hidden />}
-              <strong>{sourceDisplayName(key)}</strong>
-              <span>{count}</span>
-            </span>
-          </button>
-        ))}
-      </div>
       <div className="stream-grid" ref={gridRef} aria-live="polite">
         {items.map((item) => (
           <StreamCard
