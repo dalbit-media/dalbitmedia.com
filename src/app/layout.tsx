@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { GoogleAnalytics } from "./google-analytics";
 import { ScrollToTop } from "./scroll-to-top";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <GoogleAnalytics />
         {children}
         <ScrollToTop />
       </body>
