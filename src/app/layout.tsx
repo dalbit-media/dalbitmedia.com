@@ -4,9 +4,24 @@ import { GoogleAnalytics } from "./google-analytics";
 import { ScrollToTop } from "./scroll-to-top";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://dalbitmedia.com"),
   title: "달빛미디어 | 창작자를 위한 운영 파트너",
   description: "테스트, 배포, 마케팅, 리뷰 관리와 고객 지원까지. 달빛미디어가 운영의 전 과정을 함께합니다.",
   keywords: ["미디어 배포", "콘텐츠 마케팅", "고객관리", "리뷰 관리", "달빛미디어"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "달빛미디어 | 창작자를 위한 운영 파트너",
+    description: "테스트, 배포, 마케팅, 리뷰 관리와 고객 지원까지. 달빛미디어가 운영의 전 과정을 함께합니다.",
+    url: "/",
+    type: "website",
+    locale: "ko_KR",
+    siteName: "달빛미디어",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "달빛미디어 | 창작자를 위한 운영 파트너",
+    description: "테스트, 배포, 마케팅, 리뷰 관리와 고객 지원까지. 달빛미디어가 운영의 전 과정을 함께합니다.",
+  },
 };
 
 export default function RootLayout({

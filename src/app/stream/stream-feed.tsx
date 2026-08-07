@@ -4,7 +4,7 @@ import Image from "next/image";
 import { type FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Camera, Clock3, Flame, LoaderCircle, MessageCircle, Music2, Newspaper, Search, Tag, Users, Video, X } from "lucide-react";
 import type { Platform } from "@/lib/media-stream";
-import type { StoredStreamPage } from "@/lib/stream-store";
+import type { ProperNounTrend, StoredStreamPage } from "@/lib/stream-store";
 
 const platformIcons = {
   YouTube: Video,
@@ -205,7 +205,7 @@ async function requestStreamPage(filter: string, cursor?: string, search?: strin
   return response.json() as Promise<StoredStreamPage>;
 }
 
-export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt }: { initialPage: StoredStreamPage; initialSource: string; initialTag: string; renderedAt: string }) {
+export function StreamFeed({ initialPage, initialSource, initialTag, initialTrends, renderedAt }: { initialPage: StoredStreamPage; initialSource: string; initialTag: string; initialTrends: ProperNounTrend[]; renderedAt: string }) {
   const [items, setItems] = useState(initialPage.items);
   const [sources, setSources] = useState(initialPage.sources);
   const [selectedSource, setSelectedSource] = useState(initialSource);
@@ -230,6 +230,16 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
     ...koreanSources.map((source) => ({ key: source.source, count: source.count })),
     ...[...platformCounts].sort((left, right) => right[1] - left[1]).map(([platform, count]) => ({ key: platform, count })),
   ], [koreanSources, platformCounts, sources]);
+  const suggestionTags = useMemo(() => {
+    const query = searchInput.trim().toLowerCase();
+    const candidates = initialTrends.filter((trend) => trend.count > 0);
+    if (!query) return candidates.slice(0, 6);
+    return candidates.filter((trend) => {
+      const haystack = `${trend.displayName} ${trend.normalized}`.toLowerCase();
+      const compactQuery = query.replace(/\s+/g, "");
+      return haystack.includes(query) || haystack.replace(/\s+/g, "").includes(compactQuery);
+    }).slice(0, 6);
+  }, [initialTrends, searchInput]);
 
   useEffect(() => {
     loadingRef.current = loading;
@@ -371,6 +381,25 @@ export function StreamFeed({ initialPage, initialSource, initialTag, renderedAt 
         />
         <button type="submit" disabled={loading} aria-label="검색" title="검색"><Search size={18} /></button>
       </form>
+      {suggestionTags.length > 0 && (
+        <div className="stream-tag-suggestions" aria-label="관련 추천 태그">
+          {suggestionTags.map((tag) => {
+            const size = Math.max(13, Math.min(17, 13 + Math.round((tag.count / Math.max(1, suggestionTags[0]?.count ?? 1)) * 4)));
+            return (
+              <button
+                key={tag.normalized}
+                type="button"
+                className={`stream-tag-suggestion${activeTag === tag.normalized ? " is-active" : ""}`}
+                onClick={() => void selectTag(tag.normalized)}
+                style={{ fontSize: `${size}px` }}
+              >
+                <strong>#{tag.displayName}</strong>
+                <span>{tag.count}회</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {activeTag && <div className="stream-active-tag"><Tag size={14} /><span>{activeTag}</span><button type="button" onClick={() => void selectTag("")} aria-label="태그 필터 해제" title="태그 필터 해제"><X size={14} /></button></div>}
       <div className="stream-filters" role="group" aria-label="출처 필터">
         {filterOptions.map(({ key, count }) => (

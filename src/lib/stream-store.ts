@@ -175,7 +175,7 @@ function recordProperNouns(db: DatabaseSync, itemId: string, publishedAt: string
 }
 
 function initializeProperNounEngine(db: DatabaseSync) {
-  const engineVersion = "6";
+  const engineVersion = "7";
   const insertSeed = db.prepare(`
     INSERT INTO proper_nouns (normalized, display_name, is_seeded, seed_rank, seed_views)
     VALUES (?, ?, 1, ?, ?) ON CONFLICT(normalized) DO UPDATE SET

@@ -1,22 +1,48 @@
 import type { Metadata } from "next";
 import { RefreshCw } from "lucide-react";
-import { getStoredStreamPage } from "@/lib/stream-store";
+import { getProperNounTrendData, getStoredStreamPage } from "@/lib/stream-store";
 import { SiteHeader } from "../site-header";
 import { LogoMark } from "../logo-mark";
 import { StreamFeed } from "./stream-feed";
 
-export const metadata: Metadata = {
-  title: "한국 미디어 스트림 | 달빛미디어",
-  description: "주요 소셜 플랫폼에서 주목받는 한국 미디어 콘텐츠를 한곳에서 확인하세요.",
-};
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ tag?: string }> }): Promise<Metadata> {
+  const { tag } = await searchParams;
+  const initialTag = tag?.trim().slice(0, 100) ?? "";
+  const title = initialTag ? `${initialTag} 관련 미디어 스트림 | 달빛미디어` : "한국 미디어 스트림 | 달빛미디어";
+  const description = initialTag
+    ? `${initialTag}와 관련된 최신 한국 미디어 피드와 트렌드를 실시간으로 확인하세요.`
+    : "주요 소셜 플랫폼에서 주목받는 한국 미디어 콘텐츠를 한곳에서 확인하세요.";
+  const canonicalPath = initialTag ? `/stream?tag=${encodeURIComponent(initialTag)}` : "/stream";
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalPath },
+    keywords: [initialTag || "미디어 스트림", "한국 트렌드", "소셜 미디어", "달빛미디어"],
+    openGraph: {
+      title,
+      description,
+      url: canonicalPath,
+      type: "website",
+      locale: "ko_KR",
+      siteName: "달빛미디어",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function StreamPage({ searchParams }: { searchParams: Promise<{ tag?: string }> }) {
   const { tag } = await searchParams;
   const initialTag = tag?.trim().slice(0, 100) ?? "";
   const stream = getStoredStreamPage({ tag: initialTag || undefined, limit: 24 });
+  const trendData = getProperNounTrendData();
   const renderedAt = new Date().toISOString();
   const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
@@ -50,7 +76,7 @@ export default async function StreamPage({ searchParams }: { searchParams: Promi
       </section>
       <section className="stream-content">
         <div className="section-label"><span>01</span> LATEST FEEDS</div>
-        <StreamFeed initialPage={stream} initialSource="전체" initialTag={initialTag} renderedAt={renderedAt} />
+        <StreamFeed initialPage={stream} initialSource="전체" initialTag={initialTag} initialTrends={trendData.windows.realtime.slice(0, 12)} renderedAt={renderedAt} />
       </section>
       <footer>
         <div className="footer-brand"><LogoMark /><div><strong>달빛미디어</strong><span>창작자를 위한 운영 파트너</span></div></div>
