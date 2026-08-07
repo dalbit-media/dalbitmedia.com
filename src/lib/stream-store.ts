@@ -563,7 +563,7 @@ export function getProperNounTrendData(now = new Date()): ProperNounTrendData {
   }
 
   const raw = {
-    realtime: getProperNounTrendsSince(db, realtimeSince, 100),
+    realtime: getProperNounTrendsSince(db, realtimeSince, 100, 2),
     day: getProperNounTrendsSince(db, since(24 * 60 * 60_000), 100, 2),
     week: getProperNounTrendsSince(db, since(7 * 24 * 60 * 60_000), 100, 2),
     month: getProperNounTrendsSince(db, since(30 * 24 * 60 * 60_000), 100, 2),

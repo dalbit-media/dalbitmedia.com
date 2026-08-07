@@ -39,24 +39,28 @@ const windows = [
   ["half", "6개월", "최근 6개월", CalendarRange],
 ] as const;
 
-function TrendList({ trends }: { trends: ProperNounTrend[] }) {
+function TrendList({ trends, title, subtitle }: { trends: ProperNounTrend[]; title: string; subtitle: string }) {
   if (trends.length === 0) return <p className="trend-empty">아직 이 구간에 관측된 키워드가 없습니다.</p>;
-  const maximum = trends[0]?.count ?? 1;
-  return <ol className="trend-ranking">
-    {trends.map((trend, index) => <li key={trend.normalized}>
-      <span className="trend-rank">
-        {String(index + 1).padStart(2, "0")}
-        {trend.rankChange === "new" && <mark className="rank-badge rank-new">N</mark>}
-        {typeof trend.rankChange === "number" && trend.rankChange > 0 && <mark className="rank-badge rank-up">↑{trend.rankChange}</mark>}
-        {typeof trend.rankChange === "number" && trend.rankChange < 0 && <mark className="rank-badge rank-dn">↓{Math.abs(trend.rankChange)}</mark>}
-      </span>
-      <div className="trend-name">
-        <Link href={`/stream?tag=${encodeURIComponent(trend.normalized)}`}>{trend.displayName}</Link>
-        <span className="trend-bar"><i style={{ width: `${Math.max(8, trend.count / maximum * 100)}%` }} /></span>
+  const visibleTrends = trends.slice(0, 20);
+  const maximum = visibleTrends[0]?.count ?? 1;
+  const rankingUrl = `/trends/full?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(subtitle)}`;
+  return <>
+    <ol className="trend-ranking">
+      {visibleTrends.map((trend, index) => <li key={trend.normalized}>
+        <span className="trend-rank">{String(index + 1).padStart(2, "0")}</span>
+        <div className="trend-name">
+          <Link href={`/stream?tag=${encodeURIComponent(trend.normalized)}`}>{trend.displayName}</Link>
+          <span className="trend-bar"><i style={{ width: `${Math.max(8, trend.count / maximum * 100)}%` }} /></span>
+        </div>
+        <span className="trend-count"><strong>{trend.count}</strong>건 · {trend.sourceCount}개 소스</span>
+      </li>)}
+    </ol>
+    {trends.length > visibleTrends.length && (
+      <div className="trend-card-footer">
+        <Link href={rankingUrl} className="button button-coral trend-see-full">전체 랭킹 보기</Link>
       </div>
-      <span className="trend-count"><strong>{trend.count}</strong>건 · {trend.sourceCount}개 소스</span>
-    </li>)}
-  </ol>;
+    )}
+  </>;
 }
 
 export default function TrendsPage() {
@@ -91,7 +95,7 @@ export default function TrendsPage() {
                 <Icon size={20} />
               </div>
             </header>
-            <TrendList trends={data.windows[key]} />
+            <TrendList trends={data.windows[key]} title={title} subtitle={subtitle} />
           </article>;
         })}
       </div>

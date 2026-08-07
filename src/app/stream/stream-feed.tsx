@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { type FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Camera, Clock3, Flame, LoaderCircle, MessageCircle, Music2, Newspaper, Search, Tag, Users, Video, X } from "lucide-react";
 import type { Platform } from "@/lib/media-stream";
@@ -174,7 +173,7 @@ const StreamCard = memo(function StreamCard({
         <h2 className={titleClass}><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h2>
         {item.description && <p className="stream-card-excerpt">{item.description}</p>}
         {item.tags.length > 0 && <div className="stream-card-tags" aria-label="고유명사 태그">
-          {item.tags.map((tag) => <button key={tag.normalized} type="button" onClick={() => void onSelectTag(tag.normalized)}>#{tag.displayName}</button>)}
+          {item.tags.map((tag) => <button key={tag.normalized} type="button" onClick={() => void onSelectTag(tag.normalized)}>{tag.displayName}</button>)}
         </div>}
         {visibleMetrics.length > 0 && <div className="trend-metrics" aria-label="인기 및 반응 지표">
           {visibleMetrics.map((metric) => <span key={metric.label}><small>{metric.label}</small><strong>{formatMetric(metric.label, metric.value)}</strong></span>)}
@@ -218,7 +217,7 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
   const [activeTag, setActiveTag] = useState(initialTag);
   const [sortMode, setSortMode] = useState("newest");
   const [periodMode, setPeriodMode] = useState("all");
-  const [showAllTags, setShowAllTags] = useState(false);
+  const [showMoreTags, setShowMoreTags] = useState(true);
   const [showSourceFilters, setShowSourceFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -248,16 +247,16 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
     }).slice(0, 100);
   }, [initialTrends, searchInput]);
   const visibleTagSuggestions = useMemo(() => {
-    if (showAllTags) return suggestionTags;
-    return suggestionTags.slice(0, 12);
-  }, [showAllTags, suggestionTags]);
+    const limit = showMoreTags ? 16 : 8;
+    return suggestionTags.slice(0, limit);
+  }, [showMoreTags, suggestionTags]);
 
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
 
   useEffect(() => {
-    setShowAllTags(false);
+    setShowMoreTags(true);
   }, [activeTag, searchInput]);
 
   useEffect(() => {
@@ -435,14 +434,9 @@ export function StreamFeed({ initialPage, initialSource, initialTag, initialTren
               <span>{tag.count}회</span>
             </button>
           ))}
-          {!showAllTags && suggestionTags.length > visibleTagSuggestions.length && (
-            <Link href="/trends" className="stream-tag-toggle">
-              상위 100개 보기
-            </Link>
-          )}
-          {showAllTags && suggestionTags.length > 10 && (
-            <button type="button" className="stream-tag-toggle" onClick={() => setShowAllTags(false)}>
-              접기
+          {suggestionTags.length > visibleTagSuggestions.length && (
+            <button type="button" className="stream-tag-toggle" onClick={() => setShowMoreTags((current) => !current)}>
+              {showMoreTags ? "접기" : "더 보기"}
             </button>
           )}
         </div>
