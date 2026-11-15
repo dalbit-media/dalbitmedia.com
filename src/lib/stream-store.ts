@@ -70,6 +70,7 @@ type ItemRow = {
   trend_score: number;
   trend_metrics: string;
   collected_at: string;
+  source_score: number;
 };
 
 type Cursor = {
@@ -77,8 +78,8 @@ type Cursor = {
   rowId: number;
 };
 
-const databaseDirectory = path.join(process.cwd(), "data");
-const databasePath = path.join(databaseDirectory, "media-stream.sqlite");
+const databasePath = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.MEDIA_STREAM_DATABASE_PATH || path.join("data", "media-stream.sqlite"));
+const databaseDirectory = path.dirname(databasePath);
 let database: DatabaseSync | undefined;
 let refreshPromise: Promise<void> | undefined;
 
@@ -88,6 +89,7 @@ function getDatabase() {
   database = new DatabaseSync(databasePath);
   database.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = FULL;
     PRAGMA busy_timeout = 5000;
     CREATE TABLE IF NOT EXISTS stream_batches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,7 +110,23 @@ function getDatabase() {
       description TEXT,
       trend_score INTEGER NOT NULL,
       trend_metrics TEXT NOT NULL,
-      collected_at TEXT NOT NULL
+      collected_at TEXT NOT NULL,
+      source_score INTEGER NOT NULL DEFAULT 5
+    );
+    CREATE TABLE IF NOT EXISTS stream_item_archive (
+      id TEXT PRIMARY KEY,
+      batch_id INTEGER NOT NULL,
+      platform TEXT NOT NULL,
+      source TEXT NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      published_at TEXT NOT NULL,
+      image TEXT,
+      description TEXT,
+      trend_score INTEGER NOT NULL,
+      trend_metrics TEXT NOT NULL,
+      collected_at TEXT NOT NULL,
+      archived_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS proper_nouns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,19 +150,44 @@ function getDatabase() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS proper_noun_daily_counts (
+      observed_day TEXT NOT NULL,
+      proper_noun_id INTEGER NOT NULL REFERENCES proper_nouns(id),
+      source TEXT NOT NULL,
+      count INTEGER NOT NULL,
+      latest_at TEXT NOT NULL,
+      PRIMARY KEY (observed_day, proper_noun_id, source)
+    );
+    CREATE TABLE IF NOT EXISTS stream_source_summaries (
+      source TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      count INTEGER NOT NULL,
+      PRIMARY KEY (source, platform)
+    );
     CREATE INDEX IF NOT EXISTS stream_items_order_idx ON stream_items(batch_id DESC, trend_score DESC);
     CREATE INDEX IF NOT EXISTS stream_items_source_idx ON stream_items(source, batch_id DESC, trend_score DESC);
     CREATE INDEX IF NOT EXISTS stream_items_platform_idx ON stream_items(platform, batch_id DESC, trend_score DESC);
     CREATE INDEX IF NOT EXISTS stream_items_recent_idx ON stream_items(published_at DESC);
+    CREATE INDEX IF NOT EXISTS stream_items_trending_idx ON stream_items(trend_score DESC, published_at DESC);
+    CREATE INDEX IF NOT EXISTS stream_items_source_recent_idx ON stream_items(source, published_at DESC);
+    CREATE INDEX IF NOT EXISTS stream_items_platform_recent_idx ON stream_items(platform, published_at DESC);
+    CREATE INDEX IF NOT EXISTS stream_items_source_trending_idx ON stream_items(source, trend_score DESC, published_at DESC);
+    CREATE INDEX IF NOT EXISTS stream_items_platform_trending_idx ON stream_items(platform, trend_score DESC, published_at DESC);
     CREATE INDEX IF NOT EXISTS proper_noun_occurrences_time_idx ON proper_noun_occurrences(observed_at DESC, proper_noun_id);
     CREATE INDEX IF NOT EXISTS proper_noun_occurrences_noun_time_idx ON proper_noun_occurrences(proper_noun_id, observed_at DESC);
+    CREATE INDEX IF NOT EXISTS proper_noun_daily_day_idx ON proper_noun_daily_counts(observed_day, proper_noun_id, source);
   `);
   const itemColumns = database.prepare("PRAGMA table_info(stream_items)").all() as Array<{ name: string }>;
   if (!itemColumns.some((column) => column.name === "description")) database.exec("ALTER TABLE stream_items ADD COLUMN description TEXT");
+  const addedSourceScore = !itemColumns.some((column) => column.name === "source_score");
+  if (addedSourceScore) database.exec("ALTER TABLE stream_items ADD COLUMN source_score INTEGER NOT NULL DEFAULT 5");
   const batchColumns = database.prepare("PRAGMA table_info(stream_batches)").all() as Array<{ name: string }>;
   if (!batchColumns.some((column) => column.name === "inactive_sources")) database.exec("ALTER TABLE stream_batches ADD COLUMN inactive_sources TEXT NOT NULL DEFAULT '[]'");
   cleanStoredItems(database);
   initializeProperNounEngine(database);
+  if (addedSourceScore) recalculateSourceScores(database);
+  ensureProperNounDailyCounts(database);
+  ensureStreamSourceSummaries(database);
   return database;
 }
 
@@ -162,6 +205,13 @@ function recordProperNouns(db: DatabaseSync, itemId: string, publishedAt: string
     INSERT OR IGNORE INTO proper_noun_occurrences (item_id, proper_noun_id, observed_at, published_at, source)
     VALUES (?, ?, ?, ?, ?)
   `);
+  const incrementDailyCount = db.prepare(`
+    INSERT INTO proper_noun_daily_counts (observed_day, proper_noun_id, source, count, latest_at)
+    VALUES (?, ?, ?, 1, ?)
+    ON CONFLICT(observed_day, proper_noun_id, source) DO UPDATE SET
+      count = proper_noun_daily_counts.count + 1,
+      latest_at = MAX(proper_noun_daily_counts.latest_at, excluded.latest_at)
+  `);
   const markSeen = db.prepare(`
     UPDATE proper_nouns SET first_seen_at = COALESCE(first_seen_at, ?), last_seen_at = ? WHERE id = ?
   `);
@@ -170,7 +220,31 @@ function recordProperNouns(db: DatabaseSync, itemId: string, publishedAt: string
     insertNoun.run(match.normalized, match.displayName, Number(match.seeded), match.seedRank ?? null, match.seedViews ?? null);
     const noun = findNoun.get(match.normalized) as { id: number };
     const result = insertOccurrence.run(itemId, noun.id, observedAt, publishedAt, source);
-    if (result.changes > 0) markSeen.run(observedAt, observedAt, noun.id);
+    if (result.changes > 0) {
+      markSeen.run(observedAt, observedAt, noun.id);
+      incrementDailyCount.run(observedAt.slice(0, 10), noun.id, source, observedAt);
+    }
+  }
+}
+
+function ensureProperNounDailyCounts(db: DatabaseSync) {
+  const getVersion = db.prepare("SELECT value FROM stream_engine_metadata WHERE key = 'proper_noun_daily_counts_version'");
+  if ((getVersion.get() as { value: string } | undefined)?.value === "1") return;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`
+      DELETE FROM proper_noun_daily_counts;
+      INSERT INTO proper_noun_daily_counts (observed_day, proper_noun_id, source, count, latest_at)
+      SELECT substr(observed_at, 1, 10), proper_noun_id, source, COUNT(*), MAX(observed_at)
+      FROM proper_noun_occurrences
+      GROUP BY substr(observed_at, 1, 10), proper_noun_id, source;
+    `);
+    db.prepare("INSERT OR REPLACE INTO stream_engine_metadata (key, value) VALUES ('proper_noun_daily_counts_version', '1')").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
   }
 }
 
@@ -264,7 +338,7 @@ function decodeCursor(value: string | undefined): Cursor | null {
   }
 }
 
-function rowToItem(row: ItemRow, tags: StoredProperNoun[], sourceScore: number): StoredStreamItem {
+function rowToItem(row: ItemRow, tags: StoredProperNoun[]): StoredStreamItem {
   return {
     id: String(row.row_id),
     batchId: row.batch_id,
@@ -278,20 +352,22 @@ function rowToItem(row: ItemRow, tags: StoredProperNoun[], sourceScore: number):
     trendScore: row.trend_score,
     trendMetrics: JSON.parse(row.trend_metrics) as TrendMetric[],
     collectedAt: row.collected_at,
-    sourceScore,
+    sourceScore: row.source_score,
     tags,
   };
 }
 
-function getSourceScores(db: DatabaseSync) {
+function recalculateSourceScores(db: DatabaseSync, sources?: Set<string>) {
+  if (sources && sources.size === 0) return;
+  const sourceFilter = sources ? `WHERE source IN (${[...sources].map(() => "?").join(",")})` : "";
   const rows = db.prepare(`
     SELECT id AS item_id, source, trend_score, trend_metrics, published_at
-    FROM stream_items
-  `).all() as Array<Pick<ItemRow, "item_id" | "source" | "trend_score" | "trend_metrics" | "published_at">>;
+    FROM stream_items ${sourceFilter}
+  `).all(...(sources ? [...sources] : [])) as Array<Pick<ItemRow, "item_id" | "source" | "trend_score" | "trend_metrics" | "published_at">>;
   const sourceRows = new Map<string, typeof rows>();
   for (const row of rows) sourceRows.set(row.source, [...(sourceRows.get(row.source) ?? []), row]);
 
-  const scores = new Map<string, number>();
+  const updateScore = db.prepare("UPDATE stream_items SET source_score = ? WHERE id = ?");
   for (const items of sourceRows.values()) {
     items.sort((left, right) => {
       const leftRank = (JSON.parse(left.trend_metrics) as TrendMetric[]).find((metric) => metric.label === "인기 순위" || metric.label === "조회 순위")?.value ?? Number.POSITIVE_INFINITY;
@@ -300,10 +376,24 @@ function getSourceScores(db: DatabaseSync) {
     });
     items.forEach((item, index) => {
       const percentile = items.length === 1 ? 100 : 100 - (index / (items.length - 1)) * 95;
-      scores.set(item.item_id, Math.max(5, Math.min(100, Math.round(percentile / 5) * 5)));
+      updateScore.run(Math.max(5, Math.min(100, Math.round(percentile / 5) * 5)), item.item_id);
     });
   }
-  return scores;
+}
+
+function ensureStreamSourceSummaries(db: DatabaseSync) {
+  const getVersion = db.prepare("SELECT value FROM stream_engine_metadata WHERE key = 'stream_source_summaries_version'");
+  if ((getVersion.get() as { value: string } | undefined)?.value === "1") return;
+  refreshStreamSourceSummaries(db);
+}
+
+function refreshStreamSourceSummaries(db: DatabaseSync) {
+  db.exec(`
+    DELETE FROM stream_source_summaries;
+    INSERT INTO stream_source_summaries (source, platform, count)
+    SELECT source, platform, COUNT(*) FROM stream_items GROUP BY source, platform;
+  `);
+  db.prepare("INSERT OR REPLACE INTO stream_engine_metadata (key, value) VALUES ('stream_source_summaries_version', '1')").run();
 }
 
 function getLatestBatch() {
@@ -324,10 +414,11 @@ async function runCollection() {
     return true;
   });
   const properNounsByItem = extractProperNouns(selectedItems);
-  const existingRows = db.prepare("SELECT rowid AS row_id, id, url, title FROM stream_items").all() as Array<{ row_id: number; id: string; url: string; title: string }>;
+  const existingRows = db.prepare("SELECT rowid AS row_id, id, url, title, source FROM stream_items").all() as Array<{ row_id: number; id: string; url: string; title: string; source: string }>;
   const rowsById = new Map(existingRows.map((row) => [row.id, row]));
   const rowsByUrl = new Map(existingRows.map((row) => [canonicalStreamUrl(row.url), row]));
   const rowsByTitle = new Map(existingRows.map((row) => [normalizedStreamTitle(row.title), row]));
+  const affectedSources = new Set<string>();
   db.exec("BEGIN IMMEDIATE");
   try {
     const batchResult = db.prepare(`
@@ -344,16 +435,24 @@ async function runCollection() {
         image = ?, description = ?, trend_score = ?, trend_metrics = ?, collected_at = ? WHERE rowid = ?
     `);
     const removeSupersededSnapshotItems = db.prepare("DELETE FROM stream_items WHERE source = ? AND batch_id <> ?");
+    const archiveSupersededSnapshotItems = db.prepare(`
+      INSERT OR IGNORE INTO stream_item_archive
+      (id, batch_id, platform, source, title, url, published_at, image, description, trend_score, trend_metrics, collected_at, archived_at)
+      SELECT id, batch_id, platform, source, title, url, published_at, image, description, trend_score, trend_metrics, collected_at, ?
+      FROM stream_items WHERE source = ? AND batch_id <> ?
+    `);
 
     for (const item of selectedItems) {
       const existing = rowsById.get(item.id) ?? rowsByUrl.get(item.url) ?? rowsByTitle.get(normalizedStreamTitle(item.title));
+      affectedSources.add(item.source);
+      if (existing) affectedSources.add(existing.source);
       const values = [batchId, item.platform, item.source, item.title, item.url, item.publishedAt, item.image ?? null, item.description ?? null, item.trendScore, JSON.stringify(item.trendMetrics), stream.updatedAt] as const;
       if (existing) {
         updateItem.run(...values, existing.row_id);
         recordProperNouns(db, existing.id, item.publishedAt, item.source, stream.updatedAt, properNounsByItem.get(item.id) ?? []);
       } else {
         const result = insertItem.run(item.id, ...values);
-        const row = { row_id: Number(result.lastInsertRowid), id: item.id, url: item.url, title: item.title };
+        const row = { row_id: Number(result.lastInsertRowid), id: item.id, url: item.url, title: item.title, source: item.source };
         rowsById.set(item.id, row);
         rowsByUrl.set(item.url, row);
         rowsByTitle.set(normalizedStreamTitle(item.title), row);
@@ -361,7 +460,13 @@ async function runCollection() {
       }
     }
     const snapshotSources = new Set(selectedItems.filter((item) => isRankedItem(item.trendMetrics) || isIndexedItem(item.trendMetrics)).map((item) => item.source));
-    for (const source of snapshotSources) removeSupersededSnapshotItems.run(source, batchId);
+    for (const source of snapshotSources) {
+      archiveSupersededSnapshotItems.run(stream.updatedAt, source, batchId);
+      removeSupersededSnapshotItems.run(source, batchId);
+      affectedSources.add(source);
+    }
+    recalculateSourceScores(db, affectedSources);
+    refreshStreamSourceSummaries(db);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -384,8 +489,7 @@ export async function refreshMediaStreamIfStale(force = false) {
 export function getSourceSummaries(): SourceSummary[] {
   const rows = getDatabase().prepare(`
     SELECT source, platform, COUNT(*) AS count
-    FROM stream_items
-    GROUP BY source, platform
+    FROM stream_source_summaries
   `).all() as Array<{ source: string; platform: Platform; count: number }>;
 
   return rows
@@ -459,7 +563,7 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
   const orderBy = options.sort === "trending" ? "ORDER BY trend_score DESC, published_at DESC, rowid DESC" : "ORDER BY published_at DESC, rowid DESC";
   const rows = db.prepare(`
     SELECT rowid AS row_id, id AS item_id, batch_id, platform, source, title, url, published_at, image, description,
-      trend_score, trend_metrics, collected_at
+      trend_score, trend_metrics, collected_at, source_score
     FROM stream_items
     ${where}
     ${orderBy}
@@ -469,7 +573,6 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
   const pageRows = rows.slice(0, limit);
   const lastRow = pageRows.at(-1);
   const latest = getLatestBatch();
-  const sourceScores = getSourceScores(db);
   const tagsByItem = new Map<string, StoredProperNoun[]>();
   if (pageRows.length > 0) {
     const placeholders = pageRows.map(() => "?").join(",");
@@ -488,7 +591,7 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
   }
 
   return {
-    items: pageRows.map((row) => rowToItem(row, tagsByItem.get(row.item_id) ?? [], sourceScores.get(row.item_id) ?? 5)),
+    items: pageRows.map((row) => rowToItem(row, tagsByItem.get(row.item_id) ?? [])),
     nextCursor: hasMore && lastRow ? encodeCursor({ publishedAt: lastRow.published_at, rowId: lastRow.row_id }) : null,
     sources: getSourceSummaries(),
     updatedAt: latest?.collected_at ?? null,
@@ -504,17 +607,28 @@ export function getStoredStreamPage(options: { cursor?: string; filter?: string;
 }
 
 function getProperNounTrendsSince(db: DatabaseSync, since: string, limit: number, minimumSources = 1): ProperNounTrend[] {
+  const firstDay = since.slice(0, 10);
+  const nextDay = new Date(Date.parse(`${firstDay}T00:00:00.000Z`) + 24 * 60 * 60_000).toISOString();
   const rows = db.prepare(`
-    SELECT noun.normalized, noun.display_name, COUNT(*) AS count,
-      COUNT(DISTINCT occurrence.source) AS source_count, MAX(occurrence.observed_at) AS latest_at
-    FROM proper_noun_occurrences occurrence
-    JOIN proper_nouns noun ON noun.id = occurrence.proper_noun_id
-    WHERE occurrence.observed_at >= ?
+    WITH window_counts AS (
+      SELECT proper_noun_id, source, count, latest_at
+      FROM proper_noun_daily_counts
+      WHERE observed_day > ?
+      UNION ALL
+      SELECT proper_noun_id, source, COUNT(*), MAX(observed_at)
+      FROM proper_noun_occurrences
+      WHERE observed_at >= ? AND observed_at < ?
+      GROUP BY proper_noun_id, source
+    )
+    SELECT noun.normalized, noun.display_name, SUM(window_counts.count) AS count,
+      COUNT(DISTINCT window_counts.source) AS source_count, MAX(window_counts.latest_at) AS latest_at
+    FROM window_counts
+    JOIN proper_nouns noun ON noun.id = window_counts.proper_noun_id
     GROUP BY noun.id
-    HAVING COUNT(DISTINCT occurrence.source) >= ?
+    HAVING COUNT(DISTINCT window_counts.source) >= ?
     ORDER BY count DESC, source_count DESC, latest_at DESC, noun.seed_rank ASC
     LIMIT ?
-  `).all(since, minimumSources, limit) as Array<{ normalized: string; display_name: string; count: number; source_count: number; latest_at: string }>;
+  `).all(firstDay, since, nextDay, minimumSources, limit) as Array<{ normalized: string; display_name: string; count: number; source_count: number; latest_at: string }>;
   return rows.map((row) => ({
     normalized: row.normalized,
     displayName: row.display_name,
@@ -546,15 +660,15 @@ export function getProperNounTrendData(now = new Date()): ProperNounTrendData {
   startMonth.setUTCHours(0, 0, 0, 0);
   startMonth.setUTCMonth(startMonth.getUTCMonth() - 11);
   const historyRows = db.prepare(`
-    SELECT substr(occurrence.observed_at, 1, 7) AS month, noun.normalized, noun.display_name,
-      COUNT(*) AS count, COUNT(DISTINCT occurrence.source) AS source_count, MAX(occurrence.observed_at) AS latest_at
-    FROM proper_noun_occurrences occurrence
-    JOIN proper_nouns noun ON noun.id = occurrence.proper_noun_id
-    WHERE occurrence.observed_at >= ?
+    SELECT substr(daily.observed_day, 1, 7) AS month, noun.normalized, noun.display_name,
+      SUM(daily.count) AS count, COUNT(DISTINCT daily.source) AS source_count, MAX(daily.latest_at) AS latest_at
+    FROM proper_noun_daily_counts daily
+    JOIN proper_nouns noun ON noun.id = daily.proper_noun_id
+    WHERE daily.observed_day >= ?
     GROUP BY month, noun.id
-    HAVING COUNT(DISTINCT occurrence.source) >= 2
+    HAVING COUNT(DISTINCT daily.source) >= 2
     ORDER BY month ASC, count DESC, source_count DESC, latest_at DESC
-  `).all(startMonth.toISOString()) as Array<{ month: string; normalized: string; display_name: string; count: number; source_count: number; latest_at: string }>;
+  `).all(startMonth.toISOString().slice(0, 10)) as Array<{ month: string; normalized: string; display_name: string; count: number; source_count: number; latest_at: string }>;
   const historyMap = new Map<string, ProperNounTrend[]>();
   for (const row of historyRows) {
     const keywords = historyMap.get(row.month) ?? [];

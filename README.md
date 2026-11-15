@@ -20,6 +20,12 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Media stream storage
+
+The media stream, retired ranked-feed items, and keyword history are stored in SQLite. By default, the database is `data/media-stream.sqlite`. Set `MEDIA_STREAM_DATABASE_PATH` to an absolute path on a persistent, writable volume when deploying to a host with ephemeral local storage. Keep the SQLite database and its WAL sidecar files together on the same volume; the application does not automatically delete archived feeds or keyword history.
+
+The stream and trend pages use persisted source scores, source summaries, and daily keyword aggregates so page requests do not repeatedly scan the full history.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
